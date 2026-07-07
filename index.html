@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaxy Consolidated Auction House — Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="loading-overlay"><div class="loader-spinner"></div></div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <div class="app-container" style="display:flex;align-items:center;min-height:100vh;">
+        <div style="max-width:440px;margin:0 auto;width:100%;">
+            <div class="card card-gold-border" style="text-align:center;">
+                <div style="font-size:3rem;margin-bottom:8px;">🌌</div>
+                <h2 style="font-weight:800;letter-spacing:-0.02em;">Galaxy Consolidated<br>Auction House</h2>
+                <p style="color:var(--text-muted);margin-top:8px;">Decentralized Asset Remarketing Platform</p>
+
+                <div class="tabs" style="justify-content:center;margin-top:20px;" id="auth-tabs">
+                    <button class="tab active" data-auth-tab="login">Sign In</button>
+                    <button class="tab" data-auth-tab="register">Register</button>
+                </div>
+
+                <form id="auth-form" style="text-align:left;margin-top:16px;">
+                    <div class="form-group" id="auth-name-group" style="display:none;">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-input" id="auth-name" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-input" id="auth-email" placeholder="you@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-input" id="auth-password" placeholder="••••••••" required minlength="6">
+                    </div>
+                    <div class="form-group" id="auth-role-group" style="display:none;">
+                        <label class="form-label">Phone Number</label>
+                        <input type="tel" class="form-input" id="auth-phone" placeholder="07XX XXX XXX" style="margin-bottom:12px;">
+                        <label class="form-label">Account Type</label>
+                        <select class="form-select" id="auth-role">
+                            <option value="buyer">Buyer / Bidder</option>
+                            <option value="seller">Seller / Dealer</option>
+                            <option value="inspector">Mobile Inspector</option>
+                        </select>
+                        <p class="form-hint">Admin accounts are created internally and cannot self-register.</p>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="auth-submit-btn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+                    <p id="auth-forgot" style="margin-top:12px;font-size:0.82rem;text-align:center;"><a href="#" style="color:var(--accent-blue-light);">Forgot password?</a></p>
+                </form>
+                <p style="margin-top:12px;font-size:0.8rem;color:var(--text-muted);">🔒 Secure escrow · NTSA-integrated · Tamper-evident seals</p>
+            </div>
+            <p class="text-center text-muted mt-2" style="font-size:0.75rem;">
+                Buyer · Seller · Inspector · Admin portals — one account, routed automatically by role.
+            </p>
+        </div>
+    </div>
+
+    <script type="module" src="js/auth.js"></script>
+</body>
+</html>

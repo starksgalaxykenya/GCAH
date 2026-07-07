@@ -1,0 +1,112 @@
+rules_version = '2';
+
+// ============================================================
+// FIRESTORE SECURITY RULES — Galaxy Consolidated Auction House
+// Deploy with: firebase deploy --only firestore:rules
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function myUid() { return request.auth.uid; }
+    function myRole() { return get(/databases/$(database)/documents/users/$(myUid())).data.role; }
+    function isAdmin() { return isSignedIn() && myRole() == 'admin'; }
+    function isOwner(uid) { return isSignedIn() && myUid() == uid; }
+
+    // ---------------- USERS ----------------
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(uid);
+      // Users may edit their own profile but never their own role/kyc/suspended flags.
+      allow update: if isOwner(uid) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.kycVerified == resource.data.kycVerified &&
+        request.resource.data.suspended == resource.data.suspended
+        || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- AUCTIONS (consignment listings) ----------------
+    match /auctions/{id} {
+      allow read: if true; // public auction floor
+      allow create: if isSignedIn() && myRole() == 'seller' && request.resource.data.sellerId == myUid();
+      allow update: if isAdmin() ||
+        (isSignedIn() && myRole() == 'inspector') || // inspectors flip status to live
+        (isSignedIn()); // bidding updates currentBid/bidCount — refine further with Cloud Functions in production
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- BIDS ----------------
+    match /bids/{id} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == myUid();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------------- INSPECTIONS ----------------
+    match /inspections/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn(); // created automatically on listing submission
+      allow update: if isAdmin() || (isSignedIn() && myRole() == 'inspector');
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- ESCROW ----------------
+    match /escrow/{id} {
+      allow read: if isSignedIn() && (isAdmin() || myUid() in resource.data.participants);
+      allow create: if isAdmin() || isSignedIn(); // created by the settlement routine
+      allow update: if isAdmin() ||
+        (isSignedIn() && myUid() in resource.data.participants && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['disputeRaised','disputeReason','disputeStatus','disputeRaisedBy','updatedAt']));
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- DISPUTES ----------------
+    match /disputes/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.raisedBy == myUid();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- STOCK (own inventory / buy-now store) ----------------
+    match /stock/{id} {
+      allow read: if true; // public storefront
+      allow write: if isAdmin();
+    }
+
+    // ---------------- ORDERS (buy-now purchases) ----------------
+    match /orders/{id} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.buyerId == myUid());
+      allow create: if isSignedIn() && request.resource.data.buyerId == myUid();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- PAYOUTS ----------------
+    match /payouts/{id} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.sellerId == myUid());
+      allow create: if isSignedIn() && request.resource.data.sellerId == myUid();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- WATCHLIST ----------------
+    match /watchlist/{id} {
+      allow read, delete: if isSignedIn() && resource.data.userId == myUid();
+      allow create: if isSignedIn() && request.resource.data.userId == myUid();
+    }
+
+    // ---------------- NOTIFICATIONS ----------------
+    match /notifications/{id} {
+      allow read, update: if isSignedIn() && resource.data.userId == myUid();
+      allow create: if isSignedIn(); // any portal can push a notification to another user
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- SETTINGS ----------------
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

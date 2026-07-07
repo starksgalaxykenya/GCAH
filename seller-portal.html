@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seller Portal — Galaxy CAH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="loading-overlay"><div class="loader-spinner"></div></div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <nav class="app-nav">
+        <div class="nav-brand" onclick="window._navigateTo('dashboard')">
+            <div class="logo-icon">🌌</div><span>Galaxy CAH</span><span class="portal-tag">Seller</span>
+        </div>
+        <div class="nav-links" id="nav-links">
+            <button class="nav-link active" data-screen="dashboard" onclick="window._navigateTo('dashboard')"><i class="fas fa-th-large"></i> <span class="link-label">Dashboard</span></button>
+            <button class="nav-link" data-screen="listings" onclick="window._navigateTo('listings')"><i class="fas fa-list"></i> <span class="link-label">My Listings</span></button>
+            <button class="nav-link" data-screen="create-listing" onclick="window._navigateTo('create-listing')"><i class="fas fa-plus-circle"></i> <span class="link-label">List Asset</span></button>
+            <button class="nav-link" data-screen="earnings" onclick="window._navigateTo('earnings')"><i class="fas fa-wallet"></i> <span class="link-label">Earnings</span></button>
+            <button class="nav-link" data-screen="escrow" onclick="window._navigateTo('escrow')"><i class="fas fa-shield-alt"></i> <span class="link-label">Escrow</span></button>
+        </div>
+        <div class="nav-user">
+            <div class="notif-wrap">
+                <div class="notif-bell" id="notif-bell"><i class="fas fa-bell"></i><span class="notif-dot" id="notif-dot" style="display:none;"></span></div>
+                <div class="notif-panel" id="notif-panel"></div>
+            </div>
+            <span style="font-size:0.85rem;color:var(--text-secondary);" id="nav-user-name">User</span>
+            <div class="nav-avatar" id="nav-avatar" onclick="window._navigateTo('profile')">U</div>
+            <button class="btn-nav btn-nav-outline btn-sm" onclick="window._handleLogout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </nav>
+
+    <div class="app-container" id="app-container">
+
+        <!-- DASHBOARD -->
+        <div class="screen active" id="screen-dashboard">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Seller Dashboard</h2>
+            <p class="text-muted mb-3">Welcome back, <span id="dash-welcome-name">User</span></p>
+            <div class="grid-4 mb-3">
+                <div class="stat-card"><div class="stat-value" id="stat-listings">0</div><div class="stat-label">Total Listings</div></div>
+                <div class="stat-card blue"><div class="stat-value" id="stat-live">0</div><div class="stat-label">Live Now</div></div>
+                <div class="stat-card green"><div class="stat-value" id="stat-sold">0</div><div class="stat-label">Sold</div></div>
+                <div class="stat-card purple"><div class="stat-value" id="stat-revenue">KES 0</div><div class="stat-label">Gross Revenue</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">📋 Recent Listings</span><button class="btn btn-sm btn-secondary" onclick="window._navigateTo('listings')">View All</button></div>
+                <div class="grid-3" id="dash-recent-listings"><p class="text-muted">Loading...</p></div>
+            </div>
+        </div>
+
+        <!-- MY LISTINGS -->
+        <div class="screen" id="screen-listings">
+            <div class="flex-between mb-3">
+                <div><h2 style="font-weight:800;letter-spacing:-0.02em;">My Listings</h2><p class="text-muted">Every asset you've consigned to Galaxy CAH</p></div>
+                <button class="btn btn-primary" onclick="window._navigateTo('create-listing')"><i class="fas fa-plus"></i> New Listing</button>
+            </div>
+            <div class="tabs" id="listing-tabs">
+                <button class="tab active" data-filter="all">All</button>
+                <button class="tab" data-filter="pending_inspection">Pending Inspection</button>
+                <button class="tab" data-filter="live">Live</button>
+                <button class="tab" data-filter="ended">Ended</button>
+                <button class="tab" data-filter="rejected">Rejected</button>
+            </div>
+            <div class="grid-3" id="listings-grid"><p class="text-muted">Loading listings...</p></div>
+        </div>
+
+        <!-- CREATE LISTING -->
+        <div class="screen" id="screen-create-listing">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">List New Asset</h2>
+            <p class="text-muted mb-3">Submit your asset for auction. A mobile inspector will be dispatched before it goes live.</p>
+            <div class="card" style="max-width:800px;">
+                <form id="listing-form">
+                    <div class="grid-2">
+                        <div class="form-group"><label class="form-label">Asset Category *</label><select class="form-select" id="listing-category" required><option value="">Select category...</option><option value="vehicle">Vehicle</option><option value="tractor">Tractor</option><option value="implement">Farm Implement</option><option value="tool">Tool / Equipment</option><option value="general">General Item</option></select></div>
+                        <div class="form-group"><label class="form-label">Make / Brand *</label><input type="text" class="form-input" id="listing-make" placeholder="e.g., Toyota, John Deere" required></div>
+                        <div class="form-group"><label class="form-label">Model *</label><input type="text" class="form-input" id="listing-model" placeholder="e.g., Hilux, 5075E" required></div>
+                        <div class="form-group"><label class="form-label">Year of Manufacture</label><input type="number" class="form-input" id="listing-year" placeholder="e.g., 2020" min="1950" max="2026"></div>
+                        <div class="form-group"><label class="form-label">VIN / Chassis Number</label><input type="text" class="form-input" id="listing-vin" placeholder="Vehicle Identification Number"></div>
+                        <div class="form-group"><label class="form-label">Mileage / Hours</label><input type="number" class="form-input" id="listing-mileage" placeholder="Current reading" min="0"></div>
+                        <div class="form-group"><label class="form-label">Reserve Price (KES) *</label><input type="number" class="form-input" id="listing-reserve" placeholder="Minimum acceptable bid" required min="1000"></div>
+                        <div class="form-group"><label class="form-label">Starting Bid (KES) *</label><input type="number" class="form-input" id="listing-start-bid" placeholder="Opening bid amount" required min="100"></div>
+                        <div class="form-group"><label class="form-label">Auction Duration *</label><select class="form-select" id="listing-duration" required><option value="24">24 Hours</option><option value="48" selected>48 Hours</option><option value="72">72 Hours</option></select></div>
+                        <div class="form-group"><label class="form-label">Asset Location *</label><input type="text" class="form-input" id="listing-location" placeholder="City, Area" required></div>
+                    </div>
+                    <div class="form-group"><label class="form-label">Description *</label><textarea class="form-textarea" id="listing-description" placeholder="Detailed description, condition, service history, etc." required></textarea></div>
+                    <label class="checkbox-line"><input type="checkbox" id="listing-exclusivity" required> I agree to the <strong>Digital Consignment Agreement</strong> and exclusive auction lock. I understand that selling this asset outside Galaxy CAH during the auction window incurs a penalty fee, and a listing fee of <span id="listing-fee-amount">KES 2,500</span> applies.</label>
+                    <button type="submit" class="btn btn-primary btn-lg mt-2"><i class="fas fa-rocket"></i> Submit for Auction</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- EARNINGS -->
+        <div class="screen" id="screen-earnings">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Earnings & Payouts</h2>
+            <p class="text-muted mb-3">Track proceeds from sold assets and request payouts once escrow releases funds</p>
+            <div class="grid-3 mb-3">
+                <div class="stat-card green"><div class="stat-value" id="earn-available">KES 0</div><div class="stat-label">Available for Payout</div></div>
+                <div class="stat-card"><div class="stat-value" id="earn-pending">KES 0</div><div class="stat-label">Pending in Escrow</div></div>
+                <div class="stat-card blue"><div class="stat-value" id="earn-lifetime">KES 0</div><div class="stat-label">Lifetime Earnings</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">💳 Payout History</span><button class="btn btn-sm btn-primary" onclick="window._requestPayout()"><i class="fas fa-money-bill-wave"></i> Request Payout</button></div>
+                <div class="table-wrap"><table class="data-table" id="payout-table">
+                    <thead><tr><th>Date</th><th>Asset</th><th>Amount</th><th>Status</th></tr></thead>
+                    <tbody id="payout-tbody"><tr><td colspan="4" class="text-muted">Loading...</td></tr></tbody>
+                </table></div>
+            </div>
+        </div>
+
+        <!-- ESCROW -->
+        <div class="screen" id="screen-escrow">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Escrow & Transaction Tracker</h2>
+            <p class="text-muted mb-3">Follow your sold assets through settlement to payout</p>
+            <div class="grid-2" id="escrow-list"><p class="text-muted">Loading escrow records...</p></div>
+        </div>
+
+        <!-- PROFILE -->
+        <div class="screen" id="screen-profile">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">My Profile</h2>
+            <div class="grid-2">
+                <div class="card" id="profile-content"><p class="text-muted">Loading profile...</p></div>
+                <div class="card">
+                    <div class="card-title mb-2">Edit Profile</div>
+                    <form id="profile-edit-form">
+                        <div class="form-group"><label class="form-label">Display Name</label><input type="text" class="form-input" id="edit-name" required></div>
+                        <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" class="form-input" id="edit-phone"></div>
+                        <div class="form-group"><label class="form-label">Payout M-Pesa / Bank Details</label><input type="text" class="form-input" id="edit-payout" placeholder="e.g., M-Pesa 07XX XXX XXX"></div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-container"></div>
+
+    <script type="module" src="js/seller-portal.js"></script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspector Portal — Galaxy CAH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="loading-overlay"><div class="loader-spinner"></div></div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <nav class="app-nav">
+        <div class="nav-brand" onclick="window._navigateTo('dashboard')">
+            <div class="logo-icon">🌌</div><span>Galaxy CAH</span><span class="portal-tag">Inspector</span>
+        </div>
+        <div class="nav-links" id="nav-links">
+            <button class="nav-link active" data-screen="dashboard" onclick="window._navigateTo('dashboard')"><i class="fas fa-th-large"></i> <span class="link-label">Dashboard</span></button>
+            <button class="nav-link" data-screen="queue" onclick="window._navigateTo('queue')"><i class="fas fa-inbox"></i> <span class="link-label">Job Queue</span></button>
+            <button class="nav-link" data-screen="assignments" onclick="window._navigateTo('assignments')"><i class="fas fa-clipboard-check"></i> <span class="link-label">My Assignments</span></button>
+            <button class="nav-link" data-screen="history" onclick="window._navigateTo('history')"><i class="fas fa-history"></i> <span class="link-label">History</span></button>
+        </div>
+        <div class="nav-user">
+            <div class="notif-wrap">
+                <div class="notif-bell" id="notif-bell"><i class="fas fa-bell"></i><span class="notif-dot" id="notif-dot" style="display:none;"></span></div>
+                <div class="notif-panel" id="notif-panel"></div>
+            </div>
+            <span style="font-size:0.85rem;color:var(--text-secondary);" id="nav-user-name">User</span>
+            <div class="nav-avatar" id="nav-avatar" onclick="window._navigateTo('profile')">U</div>
+            <button class="btn-nav btn-nav-outline btn-sm" onclick="window._handleLogout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </nav>
+
+    <div class="app-container" id="app-container">
+
+        <!-- DASHBOARD -->
+        <div class="screen active" id="screen-dashboard">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Inspector Dashboard</h2>
+            <p class="text-muted mb-3">Welcome back, <span id="dash-welcome-name">User</span></p>
+            <div class="grid-4 mb-3">
+                <div class="stat-card"><div class="stat-value" id="stat-queue">0</div><div class="stat-label">Unassigned Jobs</div></div>
+                <div class="stat-card blue"><div class="stat-value" id="stat-assigned">0</div><div class="stat-label">Assigned to Me</div></div>
+                <div class="stat-card green"><div class="stat-value" id="stat-completed">0</div><div class="stat-label">Completed</div></div>
+                <div class="stat-card purple"><div class="stat-value" id="stat-rating">100%</div><div class="stat-label">Reputation</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">📍 Upcoming Assignments</span><button class="btn btn-sm btn-secondary" onclick="window._navigateTo('assignments')">View All</button></div>
+                <div class="grid-2" id="dash-assignments"><p class="text-muted">Loading...</p></div>
+            </div>
+        </div>
+
+        <!-- JOB QUEUE (unassigned) -->
+        <div class="screen" id="screen-queue">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Job Queue</h2>
+            <p class="text-muted mb-3">Unassigned inspection requests — claim one to add it to your schedule</p>
+            <div class="grid-2" id="queue-grid"><p class="text-muted">Loading job queue...</p></div>
+        </div>
+
+        <!-- MY ASSIGNMENTS -->
+        <div class="screen" id="screen-assignments">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">My Assignments</h2>
+            <p class="text-muted mb-3">Inspections currently assigned to you</p>
+            <div class="grid-2" id="assignments-grid"><p class="text-muted">Loading assignments...</p></div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="screen" id="screen-history">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Inspection History</h2>
+            <p class="text-muted mb-3">Completed inspections & applied tamper-evident seals</p>
+            <div class="table-wrap"><table class="data-table">
+                <thead><tr><th>Asset</th><th>Location</th><th>Mileage</th><th>Seal ID</th><th>Completed</th></tr></thead>
+                <tbody id="history-tbody"><tr><td colspan="5" class="text-muted">Loading...</td></tr></tbody>
+            </table></div>
+        </div>
+
+        <!-- PROFILE -->
+        <div class="screen" id="screen-profile">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">My Profile</h2>
+            <div class="grid-2">
+                <div class="card" id="profile-content"><p class="text-muted">Loading profile...</p></div>
+                <div class="card">
+                    <div class="card-title mb-2">Edit Profile</div>
+                    <form id="profile-edit-form">
+                        <div class="form-group"><label class="form-label">Display Name</label><input type="text" class="form-input" id="edit-name" required></div>
+                        <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" class="form-input" id="edit-phone"></div>
+                        <div class="form-group"><label class="form-label">Coverage Area</label><input type="text" class="form-input" id="edit-area" placeholder="e.g., Nairobi & environs"></div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-container"></div>
+
+    <script type="module" src="js/inspector-portal.js"></script>
+</body>
+</html>

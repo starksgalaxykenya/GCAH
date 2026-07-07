@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buyer Portal — Galaxy CAH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="loading-overlay"><div class="loader-spinner"></div></div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <nav class="app-nav">
+        <div class="nav-brand" onclick="window._navigateTo('dashboard')">
+            <div class="logo-icon">🌌</div>
+            <span>Galaxy CAH</span>
+            <span class="portal-tag">Buyer</span>
+        </div>
+        <div class="nav-links" id="nav-links">
+            <button class="nav-link active" data-screen="dashboard" onclick="window._navigateTo('dashboard')"><i class="fas fa-th-large"></i> <span class="link-label">Dashboard</span></button>
+            <button class="nav-link" data-screen="auctions" onclick="window._navigateTo('auctions')"><i class="fas fa-gavel"></i> <span class="link-label">Auctions</span></button>
+            <button class="nav-link" data-screen="store" onclick="window._navigateTo('store')"><i class="fas fa-store"></i> <span class="link-label">Store</span></button>
+            <button class="nav-link" data-screen="watchlist" onclick="window._navigateTo('watchlist')"><i class="fas fa-heart"></i> <span class="link-label">Watchlist</span></button>
+            <button class="nav-link" data-screen="orders" onclick="window._navigateTo('orders')"><i class="fas fa-box"></i> <span class="link-label">Orders</span></button>
+            <button class="nav-link" data-screen="escrow" onclick="window._navigateTo('escrow')"><i class="fas fa-shield-alt"></i> <span class="link-label">Escrow</span></button>
+        </div>
+        <div class="nav-user">
+            <div class="notif-wrap">
+                <div class="notif-bell" id="notif-bell"><i class="fas fa-bell"></i><span class="notif-dot" id="notif-dot" style="display:none;"></span></div>
+                <div class="notif-panel" id="notif-panel"></div>
+            </div>
+            <span style="font-size:0.85rem;color:var(--text-secondary);" id="nav-user-name">User</span>
+            <div class="nav-avatar" id="nav-avatar" onclick="window._navigateTo('profile')">U</div>
+            <button class="btn-nav btn-nav-outline btn-sm" onclick="window._handleLogout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </nav>
+
+    <div class="app-container" id="app-container">
+
+        <!-- DASHBOARD -->
+        <div class="screen active" id="screen-dashboard">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Dashboard</h2>
+            <p style="color:var(--text-muted);margin-bottom:24px;">Welcome back, <span id="dash-welcome-name">User</span></p>
+            <div class="grid-4 mb-3">
+                <div class="stat-card"><div class="stat-value" id="stat-active">0</div><div class="stat-label">Live Auctions</div></div>
+                <div class="stat-card blue"><div class="stat-value" id="stat-bids">0</div><div class="stat-label">Your Bids</div></div>
+                <div class="stat-card purple"><div class="stat-value" id="stat-escrow">KES 0</div><div class="stat-label">In Escrow</div></div>
+                <div class="stat-card green"><div class="stat-value" id="stat-won">0</div><div class="stat-label">Assets Won</div></div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header"><span class="card-title">🔥 Live Auctions</span><button class="btn btn-sm btn-secondary" onclick="window._navigateTo('auctions')">View All</button></div>
+                <div class="grid-3" id="dash-live-auctions"><p class="text-muted">Loading auctions...</p></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">🏪 From the Store</span><button class="btn btn-sm btn-secondary" onclick="window._navigateTo('store')">Visit Store</button></div>
+                <div class="grid-4" id="dash-stock-items"><p class="text-muted">Loading store items...</p></div>
+            </div>
+        </div>
+
+        <!-- AUCTIONS -->
+        <div class="screen" id="screen-auctions">
+            <div class="flex-between mb-3">
+                <div><h2 style="font-weight:800;letter-spacing:-0.02em;">Auction Floor</h2><p class="text-muted">Browse & bid on live consignment assets</p></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <input type="text" class="form-input" id="auction-search" placeholder="Search make/model..." style="width:180px;" oninput="window._filterAuctions()">
+                    <select class="form-select" id="auction-filter-category" style="width:auto;" onchange="window._filterAuctions()">
+                        <option value="all">All Categories</option>
+                        <option value="vehicle">Vehicles</option><option value="tractor">Tractors</option>
+                        <option value="implement">Implements</option><option value="tool">Tools</option>
+                        <option value="general">General Items</option>
+                    </select>
+                    <select class="form-select" id="auction-filter-status" style="width:auto;" onchange="window._filterAuctions()">
+                        <option value="all">All Status</option><option value="live">Live Now</option>
+                        <option value="upcoming">Upcoming</option><option value="ended">Ended</option>
+                    </select>
+                    <select class="form-select" id="auction-sort" style="width:auto;" onchange="window._filterAuctions()">
+                        <option value="newest">Newest</option>
+                        <option value="ending_soon">Ending Soon</option>
+                        <option value="price_high">Price: High to Low</option>
+                        <option value="price_low">Price: Low to High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid-3" id="auctions-grid"><p class="text-muted">Loading auctions...</p></div>
+        </div>
+
+        <!-- AUCTION DETAIL -->
+        <div class="screen" id="screen-auction-detail">
+            <button class="btn btn-sm btn-secondary mb-3" onclick="window._navigateTo('auctions')"><i class="fas fa-arrow-left"></i> Back to Auctions</button>
+            <div id="auction-detail-content"></div>
+        </div>
+
+        <!-- STORE (OWN STOCK) -->
+        <div class="screen" id="screen-store">
+            <div class="flex-between mb-3">
+                <div><h2 style="font-weight:800;letter-spacing:-0.02em;">Galaxy Store</h2><p class="text-muted">Buy-now items owned directly by Galaxy CAH — no bidding required</p></div>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" class="form-input" id="stock-search" placeholder="Search store..." style="width:180px;" oninput="window._filterStock()">
+                    <select class="form-select" id="stock-filter-category" style="width:auto;" onchange="window._filterStock()">
+                        <option value="all">All Categories</option>
+                        <option value="vehicle">Vehicles</option><option value="tractor">Tractors</option>
+                        <option value="implement">Implements</option><option value="tool">Tools</option>
+                        <option value="general">General Items</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid-4" id="stock-grid"><p class="text-muted">Loading store items...</p></div>
+        </div>
+
+        <!-- WATCHLIST -->
+        <div class="screen" id="screen-watchlist">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">My Watchlist</h2>
+            <p class="text-muted mb-3">Auctions you're keeping an eye on</p>
+            <div class="grid-3" id="watchlist-grid"><p class="text-muted">Loading watchlist...</p></div>
+        </div>
+
+        <!-- ORDERS -->
+        <div class="screen" id="screen-orders">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">My Store Orders</h2>
+            <p class="text-muted mb-3">Buy-now purchases from the Galaxy Store</p>
+            <div class="grid-2" id="orders-grid"><p class="text-muted">Loading orders...</p></div>
+        </div>
+
+        <!-- ESCROW -->
+        <div class="screen" id="screen-escrow">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Escrow & Transaction Tracker</h2>
+            <p class="text-muted mb-3">Secure fund management & NTSA transfer tracking</p>
+            <div class="grid-2" id="escrow-list"><p class="text-muted">Loading escrow records...</p></div>
+        </div>
+
+        <!-- PROFILE -->
+        <div class="screen" id="screen-profile">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">My Profile</h2>
+            <div class="grid-2">
+                <div class="card" id="profile-content"><p class="text-muted">Loading profile...</p></div>
+                <div class="card">
+                    <div class="card-title mb-2">Edit Profile</div>
+                    <form id="profile-edit-form">
+                        <div class="form-group"><label class="form-label">Display Name</label><input type="text" class="form-input" id="edit-name" required></div>
+                        <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" class="form-input" id="edit-phone"></div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-container"></div>
+
+    <script type="module" src="js/buyer-portal.js"></script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal — Galaxy CAH</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="loading-overlay"><div class="loader-spinner"></div></div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <nav class="app-nav">
+        <div class="nav-brand" onclick="window._navigateTo('overview')">
+            <div class="logo-icon">🌌</div><span>Galaxy CAH</span><span class="portal-tag">Admin</span>
+        </div>
+        <div class="nav-links"></div>
+        <div class="nav-user">
+            <div class="notif-wrap">
+                <div class="notif-bell" id="notif-bell"><i class="fas fa-bell"></i><span class="notif-dot" id="notif-dot" style="display:none;"></span></div>
+                <div class="notif-panel" id="notif-panel"></div>
+            </div>
+            <span style="font-size:0.85rem;color:var(--text-secondary);" id="nav-user-name">Admin</span>
+            <div class="nav-avatar" id="nav-avatar">A</div>
+            <button class="btn-nav btn-nav-outline btn-sm" onclick="window._handleLogout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </nav>
+
+    <div class="app-container" id="app-container">
+        <div class="with-sidebar">
+            <div class="sidebar card" style="padding:12px;">
+                <div class="sidebar-link active" data-screen="overview" onclick="window._navigateTo('overview')"><i class="fas fa-chart-line"></i> Overview</div>
+                <div class="sidebar-link" data-screen="users" onclick="window._navigateTo('users')"><i class="fas fa-users"></i> Users</div>
+                <div class="sidebar-link" data-screen="auctions" onclick="window._navigateTo('auctions')"><i class="fas fa-gavel"></i> Auctions</div>
+                <div class="sidebar-link" data-screen="stock" onclick="window._navigateTo('stock')"><i class="fas fa-store"></i> Own Stock</div>
+                <div class="sidebar-link" data-screen="inspections" onclick="window._navigateTo('inspections')"><i class="fas fa-clipboard-check"></i> Inspections</div>
+                <div class="sidebar-link" data-screen="escrow" onclick="window._navigateTo('escrow')"><i class="fas fa-shield-alt"></i> Escrow &amp; Disputes</div>
+                <div class="sidebar-link" data-screen="payouts" onclick="window._navigateTo('payouts')"><i class="fas fa-money-bill-wave"></i> Payouts</div>
+                <div class="sidebar-link" data-screen="orders" onclick="window._navigateTo('orders')"><i class="fas fa-box"></i> Store Orders</div>
+                <div class="sidebar-link" data-screen="broadcast" onclick="window._navigateTo('broadcast')"><i class="fas fa-bullhorn"></i> Broadcast</div>
+                <div class="sidebar-link" data-screen="settings" onclick="window._navigateTo('settings')"><i class="fas fa-cog"></i> Settings</div>
+            </div>
+
+            <div class="main-content">
+
+                <!-- OVERVIEW -->
+                <div class="screen active" id="screen-overview">
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Platform Overview</h2>
+                    <p class="text-muted mb-3">Real-time snapshot of Galaxy Consolidated Auction House</p>
+                    <div class="grid-4 mb-3">
+                        <div class="stat-card"><div class="stat-value" id="ov-users">0</div><div class="stat-label">Total Users</div></div>
+                        <div class="stat-card blue"><div class="stat-value" id="ov-live">0</div><div class="stat-label">Live Auctions</div></div>
+                        <div class="stat-card green"><div class="stat-value" id="ov-gmv">KES 0</div><div class="stat-label">Gross Merchandise Value</div></div>
+                        <div class="stat-card purple"><div class="stat-value" id="ov-fees">KES 0</div><div class="stat-label">Platform Fees Earned</div></div>
+                    </div>
+                    <div class="grid-4 mb-3">
+                        <div class="stat-card"><div class="stat-value" id="ov-pending-insp">0</div><div class="stat-label">Pending Inspections</div></div>
+                        <div class="stat-card"><div class="stat-value" id="ov-disputes">0</div><div class="stat-label">Open Disputes</div></div>
+                        <div class="stat-card"><div class="stat-value" id="ov-payouts">0</div><div class="stat-label">Payout Requests</div></div>
+                        <div class="stat-card"><div class="stat-value" id="ov-stock-value">KES 0</div><div class="stat-label">Own Stock Value</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">📊 Category Breakdown</span></div>
+                        <div id="ov-category-chart"><p class="text-muted">Loading...</p></div>
+                    </div>
+                </div>
+
+                <!-- USERS -->
+                <div class="screen" id="screen-users">
+                    <div class="flex-between mb-3">
+                        <div><h2 style="font-weight:800;letter-spacing:-0.02em;">User Management</h2><p class="text-muted">Verify KYC, manage roles, suspend accounts</p></div>
+                        <input type="text" class="form-input" id="user-search" placeholder="Search users..." style="width:220px;" oninput="window._filterUsers()">
+                    </div>
+                    <div class="tabs" id="user-tabs">
+                        <button class="tab active" data-filter="all">All</button>
+                        <button class="tab" data-filter="buyer">Buyers</button>
+                        <button class="tab" data-filter="seller">Sellers</button>
+                        <button class="tab" data-filter="inspector">Inspectors</button>
+                        <button class="tab" data-filter="admin">Admins</button>
+                    </div>
+                    <div class="card"><div class="table-wrap"><table class="data-table">
+                        <thead><tr><th>User</th><th>Role</th><th>KYC</th><th>Reputation</th><th>Joined</th><th>Actions</th></tr></thead>
+                        <tbody id="users-tbody"><tr><td colspan="6" class="text-muted">Loading users...</td></tr></tbody>
+                    </table></div></div>
+                </div>
+
+                <!-- AUCTIONS -->
+                <div class="screen" id="screen-auctions">
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Auction Moderation</h2>
+                    <p class="text-muted mb-3">Feature, cancel, or force-end any auction on the platform</p>
+                    <div class="tabs" id="auction-tabs">
+                        <button class="tab active" data-filter="all">All</button>
+                        <button class="tab" data-filter="pending_inspection">Pending Inspection</button>
+                        <button class="tab" data-filter="live">Live</button>
+                        <button class="tab" data-filter="ended">Ended</button>
+                        <button class="tab" data-filter="rejected">Rejected</button>
+                    </div>
+                    <div class="grid-3" id="admin-auctions-grid"><p class="text-muted">Loading auctions...</p></div>
+                </div>
+
+                <!-- OWN STOCK -->
+                <div class="screen" id="screen-stock">
+                    <div class="flex-between mb-3">
+                        <div><h2 style="font-weight:800;letter-spacing:-0.02em;">Own Stock Inventory</h2><p class="text-muted">Items Galaxy CAH owns outright and sells directly (Buy Now)</p></div>
+                        <button class="btn btn-primary" onclick="window._openStockForm()"><i class="fas fa-plus"></i> Add Stock Item</button>
+                    </div>
+                    <div class="grid-4" id="admin-stock-grid"><p class="text-muted">Loading inventory...</p></div>
+                </div>
+
+                <!-- INSPECTIONS -->
+                <div class="screen" id="screen-inspections">
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Inspection Management</h2>
+                    <p class="text-muted mb-3">Assign inspectors to unassigned jobs, monitor progress</p>
+                    <div class="grid-2" id="admin-inspections-grid"><p class="text-muted">Loading inspections...</p></div>
+                </div>
+
+                <!-- ESCROW & DISPUTES -->
+                <div class="screen" id="screen-escrow">
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Escrow &amp; Disputes</h2>
+                    <p class="text-muted mb-3">Advance transactions through settlement, resolve disputes</p>
+                    <div class="tabs" id="escrow-tabs">
+                        <button class="tab active" data-filter="all">All Escrow</button>
+                        <button class="tab" data-filter="disputed">Disputed Only</button>
+                    </div>
+                    <div class="grid-2" id="admin-escrow-grid"><p class="text-muted">Loading escrow records...</p></div>
+                </div>
+
+                <!-- PAYOUTS -->
+                <div class="screen" id="screen-payouts">
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Payout Requests</h2>
+                    <p class="text-muted mb-3">Approve or reject seller payout requests</p>
+                    <div class="card"><div class="table-wrap"><table class="data-table">
+                        <thead><tr><th>Seller</th><th>Asset</th><th>Amount</th><th>Status</th><th>Requested</th><th>Actions</th></tr></thead>
+                        <tbody id="payouts-tbody"><tr><td colspan="6" class="text-muted">Loading...</td></tr></tbody>
+                    </table></div></div>
+                </div>
+
+                <!-- STORE ORDERS -->
+                <div class="screen" id="screen-orders">
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Store Orders</h2>
+                    <p class="text-muted mb-3">Fulfil buy-now orders placed against Own Stock inventory</p>
+                    <div class="card"><div class="table-wrap"><table class="data-table">
+                        <thead><tr><th>Buyer</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="orders-tbody"><tr><td colspan="6" class="text-muted">Loading...</td></tr></tbody>
+                    </table></div></div>
+                </div>
+
+                <!-- BROADCAST -->
+                <div class="screen" id="screen-broadcast">
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Broadcast Notification</h2>
+                    <p class="text-muted mb-3">Send a notification to every user, or a specific role</p>
+                    <div class="card" style="max-width:600px;">
+                        <form id="broadcast-form">
+                            <div class="form-group"><label class="form-label">Audience</label>
+                                <select class="form-select" id="broadcast-role">
+                                    <option value="all">Everyone</option>
+                                    <option value="buyer">Buyers</option>
+                                    <option value="seller">Sellers</option>
+                                    <option value="inspector">Inspectors</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="broadcast-title" required></div>
+                            <div class="form-group"><label class="form-label">Message</label><textarea class="form-textarea" id="broadcast-message" required></textarea></div>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Broadcast</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- SETTINGS -->
+                <div class="screen" id="screen-settings">
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Platform Settings</h2>
+                    <p class="text-muted mb-3">Adjust platform-wide business rules</p>
+                    <div class="card" style="max-width:600px;">
+                        <form id="settings-form">
+                            <div class="form-group"><label class="form-label">Platform Fee (%)</label><input type="number" class="form-input" id="setting-fee" step="0.1" min="0" max="100"></div>
+                            <div class="form-group"><label class="form-label">Listing Fee (KES)</label><input type="number" class="form-input" id="setting-listing-fee" min="0"></div>
+                            <div class="form-group"><label class="form-label">Min Bid Increment (%)</label><input type="number" class="form-input" id="setting-increment" step="0.1" min="0" max="100"></div>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Settings</button>
+                        </form>
+                        <p class="form-hint mt-2">Settings are stored in Firestore (settings/global) and read by all portals at load time.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-container"></div>
+
+    <script type="module" src="js/admin-portal.js"></script>
+</body>
+</html>
