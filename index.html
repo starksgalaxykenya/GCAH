@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaxy Consolidated Auction House</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-primary: #0a0c14;
+            --bg-secondary: #11141f;
+            --bg-tertiary: #161a28;
+            --bg-card: #1a1e2e;
+            --bg-card-hover: #1f2440;
+            --border: #252a3e;
+            --border-light: #2e3452;
+            --text-primary: #e8eaf0;
+            --text-secondary: #b0b5c6;
+            --text-muted: #7b8099;
+            --accent-gold: #d4a843;
+            --accent-gold-light: #e8c565;
+            --accent-gold-dark: #b8912f;
+            --accent-blue: #4a90d9;
+            --accent-blue-light: #6db5f0;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-orange: #f39c12;
+            --accent-purple: #8e44ad;
+            --gradient-gold: linear-gradient(135deg, #d4a843, #b8912f);
+            --gradient-dark: linear-gradient(180deg, #11141f 0%, #0a0c14 100%);
+            --gradient-card: linear-gradient(160deg, #1a1e2e 0%, #141824 100%);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+            --shadow-gold: 0 4px 24px rgba(212, 168, 67, 0.2);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-gold-dark);
+        }
+
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.4s, visibility 0.4s;
+        }
+        #loading-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .loader-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+        .toast {
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            color: #fff;
+            font-weight: 500;
+            font-size: 0.9rem;
+            animation: slideInRight 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        .toast.success { background: #1a3a2a; border: 1px solid var(--accent-green); }
+        .toast.error { background: #3a1a1a; border: 1px solid var(--accent-red); }
+        .toast.warning { background: #3a2e1a; border: 1px solid var(--accent-orange); }
+        .toast.info { background: #1a2a3a; border: 1px solid var(--accent-blue); }
+        @keyframes slideInRight {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .app-nav {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: -0.02em;
+            cursor: pointer;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+        .nav-brand .logo-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-sm);
+            background: var(--gradient-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #1a1a1a;
+            font-weight: 900;
+        }
+        .nav-links { display: flex; gap: 4px; align-items: center; }
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            color: var(--text-secondary);
+            text-decoration: none;
+            border: none;
+            background: none;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .nav-link:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .nav-link.active { background: var(--bg-tertiary); color: var(--accent-gold); }
+        .nav-link.badge-dot { position: relative; }
+        .nav-link.badge-dot::after {
+            content: '';
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-red);
+        }
+        .nav-user { display: flex; align-items: center; gap: 12px; }
+        .nav-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--gradient-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #1a1a1a;
+            cursor: pointer;
+        }
+        .btn-nav {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            font-family: inherit;
+        }
+        .btn-nav-outline { background: transparent; border: 1.5px solid var(--border-light); color: var(--text-primary); }
+        .btn-nav-outline:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+        .btn-nav-solid { background: var(--gradient-gold); color: #1a1a1a; }
+        .btn-nav-solid:hover { box-shadow: var(--shadow-gold); transform: translateY(-1px); }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+            min-height: calc(100vh - 64px);
+        }
+        .screen { display: none; animation: fadeInUp 0.35s ease; }
+        .screen.active { display: block; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+        .card:hover { border-color: var(--border-light); box-shadow: var(--shadow-md); }
+        .card-gold-border { border: 1.5px solid var(--accent-gold-dark); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card-title { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        .badge-live { background: rgba(231, 76, 60, 0.2); color: #e74c3c; animation: pulse 2s infinite; }
+        .badge-upcoming { background: rgba(74, 144, 217, 0.2); color: #4a90d9; }
+        .badge-sold { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+        .badge-pending { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
+        .badge-escrow { background: rgba(142, 68, 173, 0.2); color: #8e44ad; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        @media (max-width: 1200px) { .grid-4 { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 900px) { .grid-3,.grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } }
+        @media (max-width: 600px) {
+            .grid-3,.grid-4,.grid-2 { grid-template-columns: 1fr; }
+            .app-nav { padding: 0 12px; }
+            .nav-link { padding: 6px 10px; font-size: 0.8rem; }
+            .app-container { padding: 12px; }
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: var(--text-secondary); letter-spacing: 0.01em; }
+        .form-input,.form-select,.form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            outline: none;
+        }
+        .form-input:focus,.form-select:focus,.form-textarea:focus {
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 0 3px rgba(212, 168, 67, 0.1);
+        }
+        .form-textarea { resize: vertical; min-height: 100px; }
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23b0b5c6' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            font-family: inherit;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+        .btn-primary { background: var(--gradient-gold); color: #1a1a1a; }
+        .btn-primary:hover { box-shadow: var(--shadow-gold); transform: translateY(-2px); }
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1.5px solid var(--border-light); }
+        .btn-secondary:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+        .btn-danger { background: rgba(231, 76, 60, 0.15); color: var(--accent-red); border: 1.5px solid rgba(231, 76, 60, 0.3); }
+        .btn-danger:hover { background: rgba(231, 76, 60, 0.25); }
+        .btn-sm { padding: 8px 16px; font-size: 0.8rem; }
+        .btn-lg { padding: 16px 32px; font-size: 1rem; }
+        .btn-block { width: 100%; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
+        .auction-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        .auction-card:hover { border-color: var(--accent-gold-dark); box-shadow: var(--shadow-lg); transform: translateY(-4px); }
+        .auction-card-image {
+            height: 200px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: var(--text-muted);
+            position: relative;
+            overflow: hidden;
+        }
+        .auction-card-image img { width: 100%; height: 100%; object-fit: cover; }
+        .auction-card-image .overlay-badge { position: absolute; top: 12px; right: 12px; }
+        .auction-card-body { padding: 16px; }
+        .auction-card-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; letter-spacing: -0.01em; }
+        .auction-card-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+        .auction-card-bid { font-weight: 700; font-size: 1.3rem; color: var(--accent-gold); margin-top: 8px; }
+        .auction-card-footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); }
+        .countdown-timer { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent-orange); font-size: 0.85rem; }
+        .countdown-timer.urgent { color: var(--accent-red); animation: pulse 1s infinite; }
+
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; text-align: center; }
+        .stat-value { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--accent-gold); font-family: 'JetBrains Mono', monospace; }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; font-weight: 500; }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 28px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-close {
+            width: 36px; height: 36px; border-radius: 50%; background: var(--bg-tertiary);
+            border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center; transition: var(--transition);
+        }
+        .modal-close:hover { background: var(--accent-red); color: #fff; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+        .tab {
+            padding: 10px 20px; cursor: pointer; font-weight: 500; font-size: 0.9rem;
+            color: var(--text-muted); border-bottom: 2px solid transparent;
+            margin-bottom: -2px; transition: var(--transition); background: none;
+            border-top: none; border-left: none; border-right: none; font-family: inherit;
+        }
+        .tab.active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); }
+        .tab:hover { color: var(--text-primary); }
+
+        .bid-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        .bid-amount { font-weight: 700; color: var(--accent-gold); font-family: 'JetBrains Mono', monospace; }
+        .bid-user { color: var(--text-secondary); }
+        .bid-time { color: var(--text-muted); font-size: 0.75rem; }
+
+        .escrow-steps { display: flex; gap: 0; margin: 20px 0; position: relative; }
+        .escrow-step { flex: 1; text-align: center; position: relative; z-index: 1; }
+        .escrow-step-dot {
+            width: 32px; height: 32px; border-radius: 50%; background: var(--bg-tertiary);
+            border: 3px solid var(--border); margin: 0 auto 8px; display: flex;
+            align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; transition: var(--transition);
+        }
+        .escrow-step.completed .escrow-step-dot { background: var(--accent-green); border-color: var(--accent-green); color: #fff; }
+        .escrow-step.active .escrow-step-dot { background: var(--accent-gold); border-color: var(--accent-gold); color: #1a1a1a; animation: pulse 2s infinite; }
+        .escrow-step-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 500; }
+        .escrow-connector { position: absolute; top: 16px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+        .escrow-connector.completed { background: var(--accent-green); }
+
+        .inspection-photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+        .inspection-photo { aspect-ratio: 1; background: var(--bg-tertiary); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; transition: var(--transition); }
+        .inspection-photo:hover { border: 2px solid var(--accent-gold); }
+
+        .mileage-alert { background: rgba(243,156,18,0.1); border: 1px solid rgba(243,156,18,0.3); padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.85rem; color: var(--accent-orange); display: flex; align-items: center; gap: 8px; }
+
+        .seal-verified { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: rgba(46,204,113,0.15); color: var(--accent-green); font-size: 0.8rem; font-weight: 600; }
+        .seal-broken { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: rgba(231,76,60,0.15); color: var(--accent-red); font-size: 0.8rem; font-weight: 600; }
+
+        .hidden { display: none !important; }
+        .text-gold { color: var(--accent-gold); }
+        .text-muted { color: var(--text-muted); }
+        .text-center { text-align: center; }
+        .mt-1 { margin-top: 8px; } .mt-2 { margin-top: 16px; } .mt-3 { margin-top: 24px; }
+        .mb-2 { margin-bottom: 16px; } .mb-3 { margin-bottom: 24px; }
+        .gap-2 { gap: 16px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .w-full { width: 100%; }
+    </style>
+</head>
+<body>
+
+    <div id="loading-overlay"><div class="loader-spinner"></div></div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <nav class="app-nav" id="app-nav" style="display:none;">
+        <div class="nav-brand" onclick="window._navigateTo('dashboard')">
+            <div class="logo-icon">🌌</div>
+            <span>Galaxy CAH</span>
+        </div>
+        <div class="nav-links" id="nav-links">
+            <button class="nav-link active" data-screen="dashboard" onclick="window._navigateTo('dashboard')"><i class="fas fa-th-large"></i> Dashboard</button>
+            <button class="nav-link" data-screen="auctions" onclick="window._navigateTo('auctions')"><i class="fas fa-gavel"></i> Auctions</button>
+            <button class="nav-link" data-screen="create-listing" onclick="window._navigateTo('create-listing')"><i class="fas fa-plus-circle"></i> List Asset</button>
+            <button class="nav-link" data-screen="inspections" onclick="window._navigateTo('inspections')" id="nav-inspections" style="display:none;"><i class="fas fa-clipboard-check"></i> Inspections</button>
+            <button class="nav-link" data-screen="escrow" onclick="window._navigateTo('escrow')"><i class="fas fa-shield-alt"></i> Escrow</button>
+        </div>
+        <div class="nav-user">
+            <span style="font-size:0.85rem;color:var(--text-secondary);" id="nav-user-name">User</span>
+            <div class="nav-avatar" id="nav-avatar" onclick="window._navigateTo('profile')">U</div>
+            <button class="btn-nav btn-nav-outline btn-sm" onclick="window._handleLogout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </nav>
+
+    <div class="app-container" id="app-container">
+        <div class="screen active" id="screen-auth">
+            <div style="max-width:440px;margin:60px auto;">
+                <div class="card card-gold-border" style="text-align:center;">
+                    <div style="font-size:3rem;margin-bottom:8px;">🌌</div>
+                    <h2 style="font-weight:800;letter-spacing:-0.02em;">Galaxy Consolidated<br>Auction House</h2>
+                    <p style="color:var(--text-muted);margin-top:8px;">Decentralized Asset Remarketing Platform</p>
+                    <div class="tabs" style="justify-content:center;margin-top:20px;" id="auth-tabs">
+                        <button class="tab active" data-auth-tab="login">Sign In</button>
+                        <button class="tab" data-auth-tab="register">Register</button>
+                    </div>
+                    <form id="auth-form" style="text-align:left;margin-top:16px;">
+                        <div class="form-group" id="auth-name-group" style="display:none;">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-input" id="auth-name" placeholder="John Doe">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-input" id="auth-email" placeholder="you@email.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-input" id="auth-password" placeholder="••••••••" required minlength="6">
+                        </div>
+                        <div class="form-group" id="auth-role-group" style="display:none;">
+                            <label class="form-label">Account Type</label>
+                            <select class="form-select" id="auth-role">
+                                <option value="buyer">Buyer / Bidder</option>
+                                <option value="seller">Seller / Dealer</option>
+                                <option value="inspector">Mobile Inspector</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block btn-lg" id="auth-submit-btn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+                    </form>
+                    <p style="margin-top:12px;font-size:0.8rem;color:var(--text-muted);">🔒 Secure escrow · NTSA-integrated · Tamper-evident seals</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen" id="screen-dashboard">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Dashboard</h2>
+            <p style="color:var(--text-muted);margin-bottom:24px;">Welcome back, <span id="dash-welcome-name">User</span></p>
+            <div class="grid-4 mb-3" id="dash-stats">
+                <div class="stat-card"><div class="stat-value" id="stat-active">0</div><div class="stat-label">Active Auctions</div></div>
+                <div class="stat-card"><div class="stat-value" id="stat-bids">0</div><div class="stat-label">Your Bids</div></div>
+                <div class="stat-card"><div class="stat-value" id="stat-escrow">KES 0</div><div class="stat-label">In Escrow</div></div>
+                <div class="stat-card"><div class="stat-value" id="stat-won">0</div><div class="stat-label">Assets Won</div></div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header"><span class="card-title">🔥 Live Auctions</span><button class="btn btn-sm btn-secondary" onclick="window._navigateTo('auctions')">View All</button></div>
+                <div class="grid-3" id="dash-live-auctions"><p style="color:var(--text-muted);">Loading auctions...</p></div>
+            </div>
+        </div>
+
+        <div class="screen" id="screen-auctions">
+            <div class="flex-between mb-3">
+                <div><h2 style="font-weight:800;letter-spacing:-0.02em;">Auction Floor</h2><p style="color:var(--text-muted);">Browse & bid on live assets</p></div>
+                <div style="display:flex;gap:8px;">
+                    <select class="form-select" id="auction-filter-category" style="width:auto;" onchange="window._filterAuctions()">
+                        <option value="all">All Categories</option>
+                        <option value="vehicle">Vehicles</option><option value="tractor">Tractors</option>
+                        <option value="implement">Implements</option><option value="tool">Tools</option>
+                        <option value="general">General Items</option>
+                    </select>
+                    <select class="form-select" id="auction-filter-status" style="width:auto;" onchange="window._filterAuctions()">
+                        <option value="all">All Status</option><option value="live">Live Now</option>
+                        <option value="upcoming">Upcoming</option><option value="ended">Ended</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid-3" id="auctions-grid"><p style="color:var(--text-muted);">Loading auctions...</p></div>
+        </div>
+
+        <div class="screen" id="screen-auction-detail">
+            <button class="btn btn-sm btn-secondary mb-3" onclick="window._navigateTo('auctions')"><i class="fas fa-arrow-left"></i> Back to Auctions</button>
+            <div id="auction-detail-content"></div>
+        </div>
+
+        <div class="screen" id="screen-create-listing">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">List New Asset</h2>
+            <p style="color:var(--text-muted);margin-bottom:24px;">Submit your asset for auction</p>
+            <div class="card" style="max-width:800px;">
+                <form id="listing-form">
+                    <div class="grid-2">
+                        <div class="form-group"><label class="form-label">Asset Category *</label><select class="form-select" id="listing-category" required><option value="">Select category...</option><option value="vehicle">Vehicle</option><option value="tractor">Tractor</option><option value="implement">Farm Implement</option><option value="tool">Tool / Equipment</option><option value="general">General Item</option></select></div>
+                        <div class="form-group"><label class="form-label">Make / Brand *</label><input type="text" class="form-input" id="listing-make" placeholder="e.g., Toyota, John Deere" required></div>
+                        <div class="form-group"><label class="form-label">Model *</label><input type="text" class="form-input" id="listing-model" placeholder="e.g., Hilux, 5075E" required></div>
+                        <div class="form-group"><label class="form-label">Year of Manufacture</label><input type="number" class="form-input" id="listing-year" placeholder="e.g., 2020" min="1950" max="2026"></div>
+                        <div class="form-group"><label class="form-label">VIN / Chassis Number</label><input type="text" class="form-input" id="listing-vin" placeholder="Vehicle Identification Number"></div>
+                        <div class="form-group"><label class="form-label">Mileage / Hours</label><input type="number" class="form-input" id="listing-mileage" placeholder="Current reading" min="0"></div>
+                        <div class="form-group"><label class="form-label">Reserve Price (KES) *</label><input type="number" class="form-input" id="listing-reserve" placeholder="Minimum acceptable bid" required min="1000"></div>
+                        <div class="form-group"><label class="form-label">Starting Bid (KES) *</label><input type="number" class="form-input" id="listing-start-bid" placeholder="Opening bid amount" required min="100"></div>
+                        <div class="form-group"><label class="form-label">Auction Duration *</label><select class="form-select" id="listing-duration" required><option value="24">24 Hours</option><option value="48" selected>48 Hours</option><option value="72">72 Hours</option></select></div>
+                        <div class="form-group"><label class="form-label">Asset Location *</label><input type="text" class="form-input" id="listing-location" placeholder="City, Area" required></div>
+                    </div>
+                    <div class="form-group"><label class="form-label">Description *</label><textarea class="form-textarea" id="listing-description" placeholder="Detailed description, condition, service history, etc." required></textarea></div>
+                    <div class="form-group"><label class="form-label"><input type="checkbox" id="listing-exclusivity" required> I agree to the <strong>Digital Consignment Agreement</strong> and exclusive auction lock. I understand that selling this asset outside Galaxy CAH during the auction window incurs a penalty fee.</label></div>
+                    <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Submit for Auction</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="screen" id="screen-inspections">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Mobile Inspection Dashboard</h2>
+            <p style="color:var(--text-muted);margin-bottom:24px;">Manage inspection assignments & reports</p>
+            <div class="grid-2" id="inspections-list"><p style="color:var(--text-muted);">Loading inspection assignments...</p></div>
+        </div>
+
+        <div class="screen" id="screen-escrow">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Escrow & Transaction Tracker</h2>
+            <p style="color:var(--text-muted);margin-bottom:24px;">Secure fund management & payout tracking</p>
+            <div class="grid-2" id="escrow-list"><p style="color:var(--text-muted);">Loading escrow records...</p></div>
+        </div>
+
+        <div class="screen" id="screen-profile">
+            <h2 style="font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">My Profile</h2>
+            <div class="card" style="max-width:600px;" id="profile-content"><p style="color:var(--text-muted);">Loading profile...</p></div>
+        </div>
+    </div>
+
+    <div id="modal-container"></div>
+
+    <!-- SINGLE UNIFIED FIREBASE + APPLICATION MODULE -->
+    <script type="module">
+        // ============================================
+        // FIREBASE IMPORTS (all in one module)
+        // ============================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged,
+            updateProfile
+        } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import {
+            getFirestore,
+            collection,
+            doc,
+            setDoc,
+            getDoc,
+            getDocs,
+            addDoc,
+            updateDoc,
+            query,
+            where,
+            orderBy,
+            limit,
+            onSnapshot,
+            serverTimestamp,
+            increment,
+            Timestamp,
+            arrayUnion
+        } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // ============================================
+        // FIREBASE CONFIG & INITIALIZATION
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJ2eJ6kmfop87Dj6AnKtjvw58Qzk1QJW4",
+            authDomain: "galaxy-cah.firebaseapp.com",
+            projectId: "galaxy-cah",
+            storageBucket: "galaxy-cah.firebasestorage.app",
+            messagingSenderId: "1079111934244",
+            appId: "1:1079111934244:web:40dc841b1fe3f6c53313b1",
+            measurementId: "G-TXR17RMEYW"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        console.log('🔥 Firebase initialized successfully');
+        console.log('📦 Project:', firebaseConfig.projectId);
+        console.log('🌌 Galaxy Consolidated Auction House - Ready');
+
+        // ============================================
+        // APPLICATION STATE
+        // ============================================
+        const AppState = {
+            currentUser: null,
+            currentUserData: null,
+            currentScreen: 'auth',
+            authMode: 'login',
+            auctions: [],
+            filteredAuctions: [],
+            activeAuctionId: null,
+            unsubscribers: [],
+            inspectionAssignments: [],
+            escrowRecords: []
+        };
+
+        // ============================================
+        // TOAST SYSTEM
+        // ============================================
+        function showToast(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            toast.innerHTML = `${icons[type] || 'ℹ️'} ${message}`;
+            toast.onclick = () => toast.remove();
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, duration);
+        }
+
+        function showLoading() { document.getElementById('loading-overlay').classList.remove('hidden'); }
+        function hideLoading() { document.getElementById('loading-overlay').classList.add('hidden'); }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ============================================
+        // NAVIGATION
+        // ============================================
+        function navigateTo(screenName, data = null) {
+            if (screenName === 'auction-detail' && data) AppState.activeAuctionId = data;
+            if (screenName !== 'auction-detail') AppState.activeAuctionId = null;
+            AppState.currentScreen = screenName;
+
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.dataset.screen === screenName) link.classList.add('active');
+            });
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById(`screen-${screenName}`);
+            if (target) target.classList.add('active');
+
+            const nav = document.getElementById('app-nav');
+            if (screenName === 'auth') {
+                nav.style.display = 'none';
+            } else {
+                nav.style.display = 'flex';
+                updateNavForRole();
+            }
+            loadScreenData(screenName);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updateNavForRole() {
+            const userData = AppState.currentUserData;
+            const inspLink = document.getElementById('nav-inspections');
+            if (userData && (userData.role === 'inspector' || userData.role === 'admin')) {
+                inspLink.style.display = 'inline-block';
+            } else {
+                inspLink.style.display = 'none';
+            }
+        }
+
+        async function loadScreenData(screenName) {
+            switch (screenName) {
+                case 'dashboard': await loadDashboard(); break;
+                case 'auctions': await loadAuctions(); break;
+                case 'auction-detail': await loadAuctionDetail(); break;
+                case 'inspections': await loadInspections(); break;
+                case 'escrow': await loadEscrowRecords(); break;
+                case 'profile': await loadProfile(); break;
+            }
+        }
+
+        // Expose to window for onclick handlers
+        window._navigateTo = navigateTo;
+        window._handleLogout = handleLogout;
+        window._filterAuctions = applyAuctionFilters;
+        window._navigateToAuction = (id) => navigateTo('auction-detail', id);
+        window._placeBid = placeBid;
+        window._completeInspection = completeInspection;
+
+        // ============================================
+        // AUTH MODULE
+        // ============================================
+        function setupAuthListeners() {
+            document.querySelectorAll('#auth-tabs .tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('#auth-tabs .tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    AppState.authMode = tab.dataset.authTab;
+                    updateAuthForm();
+                });
+            });
+            document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
+        }
+
+        function updateAuthForm() {
+            const isRegister = AppState.authMode === 'register';
+            document.getElementById('auth-name-group').style.display = isRegister ? 'block' : 'none';
+            document.getElementById('auth-role-group').style.display = isRegister ? 'block' : 'none';
+            const btn = document.getElementById('auth-submit-btn');
+            btn.innerHTML = isRegister ? '<i class="fas fa-user-plus"></i> Create Account' : '<i class="fas fa-sign-in-alt"></i> Sign In';
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            showLoading();
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const name = document.getElementById('auth-name').value.trim();
+            const role = document.getElementById('auth-role').value;
+            try {
+                if (AppState.authMode === 'register') {
+                    if (!name) throw new Error('Full name is required');
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    await updateProfile(userCredential.user, { displayName: name });
+                    await setDoc(doc(db, 'users', userCredential.user.uid), {
+                        uid: userCredential.user.uid, email, displayName: name, role,
+                        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+                        kycVerified: false, totalBids: 0, totalWon: 0, escrowBalance: 0, reputation: 100
+                    });
+                    showToast('Account created successfully! Welcome aboard.', 'success');
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    showToast('Signed in successfully!', 'success');
+                }
+            } catch (error) {
+                let msg = error.message;
+                if (error.code === 'auth/email-already-in-use') msg = 'This email is already registered.';
+                if (error.code === 'auth/invalid-credential') msg = 'Invalid email or password.';
+                if (error.code === 'auth/weak-password') msg = 'Password must be at least 6 characters.';
+                showToast(msg, 'error');
+            } finally { hideLoading(); }
+        }
+
+        async function handleLogout() {
+            try {
+                AppState.unsubscribers.forEach(u => u());
+                AppState.unsubscribers = [];
+                await signOut(auth);
+                AppState.currentUser = null;
+                AppState.currentUserData = null;
+                AppState.auctions = [];
+                navigateTo('auth');
+                showToast('Signed out successfully.', 'info');
+            } catch (e) { showToast('Logout failed: ' + e.message, 'error'); }
+        }
+
+        // Auth observer
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                AppState.currentUser = user;
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    AppState.currentUserData = userDoc.data();
+                } else {
+                    const newData = {
+                        uid: user.uid, email: user.email, displayName: user.displayName || 'User',
+                        role: 'buyer', createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+                        kycVerified: false, totalBids: 0, totalWon: 0, escrowBalance: 0, reputation: 100
+                    };
+                    await setDoc(doc(db, 'users', user.uid), newData);
+                    AppState.currentUserData = newData;
+                }
+                document.getElementById('nav-user-name').textContent = AppState.currentUserData.displayName || user.email;
+                document.getElementById('nav-avatar').textContent = (AppState.currentUserData.displayName || 'U').charAt(0).toUpperCase();
+                document.getElementById('dash-welcome-name').textContent = AppState.currentUserData.displayName || 'User';
+                if (AppState.currentScreen === 'auth') navigateTo('dashboard');
+                updateNavForRole();
+                hideLoading();
+            } else {
+                AppState.currentUser = null;
+                AppState.currentUserData = null;
+                document.getElementById('app-nav').style.display = 'none';
+                navigateTo('auth');
+                hideLoading();
+            }
+        });
+
+        // ============================================
+        // DASHBOARD MODULE
+        // ============================================
+        async function loadDashboard() {
+            if (!AppState.currentUser) return;
+            const uid = AppState.currentUser.uid;
+            try {
+                const liveSnap = await getDocs(query(collection(db, 'auctions'), where('status', '==', 'live')));
+                document.getElementById('stat-active').textContent = liveSnap.size;
+
+                const bidsSnap = await getDocs(query(collection(db, 'bids'), where('userId', '==', uid)));
+                document.getElementById('stat-bids').textContent = bidsSnap.size;
+
+                const escrowSnap = await getDocs(query(collection(db, 'escrow'), where('buyerId', '==', uid), where('status', 'in', ['held', 'pending_release'])));
+                let escTotal = 0;
+                escrowSnap.forEach(d => escTotal += (d.data().amount || 0));
+                document.getElementById('stat-escrow').textContent = 'KES ' + escTotal.toLocaleString();
+
+                const wonSnap = await getDocs(query(collection(db, 'auctions'), where('winningBidderId', '==', uid), where('status', '==', 'ended')));
+                document.getElementById('stat-won').textContent = wonSnap.size;
+
+                const dashGrid = document.getElementById('dash-live-auctions');
+                if (liveSnap.empty) {
+                    dashGrid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;">No live auctions at the moment.</p>';
+                } else {
+                    const auctions = [];
+                    liveSnap.forEach(d => auctions.push({ id: d.id, ...d.data() }));
+                    auctions.sort((a, b) => (a.endTime?.seconds || 0) - (b.endTime?.seconds || 0));
+                    dashGrid.innerHTML = auctions.slice(0, 6).map(a => renderAuctionCard(a)).join('');
+                }
+            } catch (e) { console.error('Dashboard error:', e); }
+        }
+
+        // ============================================
+        // AUCTIONS MODULE
+        // ============================================
+        async function loadAuctions() {
+            try {
+                const snap = await getDocs(query(collection(db, 'auctions'), orderBy('createdAt', 'desc'), limit(50)));
+                AppState.auctions = [];
+                snap.forEach(d => AppState.auctions.push({ id: d.id, ...d.data() }));
+                applyAuctionFilters();
+            } catch (e) {
+                document.getElementById('auctions-grid').innerHTML = '<p style="color:var(--text-muted);">Error loading auctions.</p>';
+            }
+        }
+
+        function applyAuctionFilters() {
+            const cat = document.getElementById('auction-filter-category')?.value || 'all';
+            const stat = document.getElementById('auction-filter-status')?.value || 'all';
+            let filtered = [...AppState.auctions];
+            if (cat !== 'all') filtered = filtered.filter(a => a.category === cat);
+            if (stat !== 'all') filtered = filtered.filter(a => a.status === stat);
+            AppState.filteredAuctions = filtered;
+            const grid = document.getElementById('auctions-grid');
+            if (filtered.length === 0) {
+                grid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:40px;">No auctions found.</p>';
+                return;
+            }
+            grid.innerHTML = filtered.map(a => renderAuctionCard(a)).join('');
+        }
+
+        function renderAuctionCard(auction) {
+            const now = new Date();
+            const endTime = auction.endTime?.toDate ? auction.endTime.toDate() : new Date(auction.endTime);
+            const isLive = auction.status === 'live' && endTime > now;
+            const timeLeft = endTime - now;
+            const h = Math.max(0, Math.floor(timeLeft / 3600000));
+            const m = Math.max(0, Math.floor((timeLeft % 3600000) / 60000));
+            const s = Math.max(0, Math.floor((timeLeft % 60000) / 1000));
+            const statusBadge = auction.status === 'ended' ? '<span class="badge badge-sold">Ended</span>' :
+                isLive ? '<span class="badge badge-live">🔴 LIVE</span>' : '<span class="badge badge-upcoming">Upcoming</span>';
+            const catIcon = { vehicle:'🚗', tractor:'🚜', implement:'🔧', tool:'🛠️', general:'📦' }[auction.category] || '📦';
+            const countdown = isLive ? `<span class="countdown-timer${timeLeft<3600000?' urgent':''}">⏱ ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</span>` : '';
+            const bid = auction.currentBid || auction.startingBid || 0;
+            return `
+            <div class="auction-card" onclick="window._navigateToAuction('${auction.id}')">
+              <div class="auction-card-image"><span style="font-size:4rem;">${catIcon}</span><div class="overlay-badge">${statusBadge}</div></div>
+              <div class="auction-card-body">
+                <div class="auction-card-title">${escapeHtml(auction.make)} ${escapeHtml(auction.model)}</div>
+                <div class="auction-card-meta"><span>📅 ${auction.year||'N/A'}</span><span>📍 ${escapeHtml(auction.location||'TBA')}</span>${auction.mileage?`<span>🛣 ${auction.mileage.toLocaleString()} km</span>`:''}</div>
+                <div class="auction-card-bid">KES ${bid.toLocaleString()}</div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">${auction.bidCount||0} bids · Reserve: KES ${(auction.reservePrice||0).toLocaleString()}</div>
+              </div>
+              <div class="auction-card-footer"><span>${auction.category?.toUpperCase()||'ASSET'}</span>${countdown}</div>
+            </div>`;
+        }
+
+        // ============================================
+        // AUCTION DETAIL + BIDDING
+        // ============================================
+        async function loadAuctionDetail() {
+            const id = AppState.activeAuctionId;
+            if (!id) return;
+            const container = document.getElementById('auction-detail-content');
+            container.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
+            try {
+                const auctionDoc = await getDoc(doc(db, 'auctions', id));
+                if (!auctionDoc.exists()) { container.innerHTML = '<p style="color:var(--accent-red);">Auction not found.</p>'; return; }
+                const auction = { id: auctionDoc.id, ...auctionDoc.data() };
+                const now = new Date();
+                const endTime = auction.endTime?.toDate ? auction.endTime.toDate() : new Date(auction.endTime);
+                const isLive = auction.status === 'live' && endTime > now;
+
+                const bidsUnsub = onSnapshot(query(collection(db, 'bids'), where('auctionId', '==', id), orderBy('amount', 'desc'), limit(20)), (snap) => {
+                    const bids = []; snap.forEach(d => bids.push({ id: d.id, ...d.data() }));
+                    const bidList = document.getElementById('bid-history-list');
+                    if (bidList) {
+                        bidList.innerHTML = bids.length === 0 ? '<p style="color:var(--text-muted);">No bids yet.</p>' :
+                            bids.map((b,i) => `<div class="bid-row"><span class="bid-user">${escapeHtml(b.bidderName||'Anonymous')}${i===0?' 👑':''}</span><span class="bid-amount">KES ${b.amount.toLocaleString()}</span><span class="bid-time">${b.timestamp?.toDate?.().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})||''}</span></div>`).join('');
+                    }
+                });
+                AppState.unsubscribers.push(bidsUnsub);
+
+                const currentBid = auction.currentBid || auction.startingBid || 0;
+                const minNext = currentBid + Math.max(1000, Math.floor(currentBid * 0.02));
+                const catIcon = { vehicle:'🚗', tractor:'🚜', implement:'🔧', tool:'🛠️', general:'📦' }[auction.category] || '📦';
+                container.innerHTML = `
+                <div class="grid-2">
+                  <div class="card card-gold-border" style="text-align:center;padding:40px;">
+                    <span style="font-size:6rem;">${catIcon}</span>
+                    <h2 style="font-weight:800;margin-top:12px;">${escapeHtml(auction.make)} ${escapeHtml(auction.model)}</h2>
+                    <p style="color:var(--text-muted);">${auction.year||'N/A'} · ${escapeHtml(auction.location||'TBA')}</p>
+                    ${auction.mileage?`<p>🛣 Mileage: <strong>${auction.mileage.toLocaleString()} km</strong></p>`:''}
+                    ${auction.vin?`<p style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;">🔢 VIN: ${escapeHtml(auction.vin)}</p>`:''}
+                    ${auction.sealId?'<span class="seal-verified">🔒 Seal Verified</span>':'<span class="seal-broken">⚠️ Seal Pending</span>'}
+                    <p style="margin-top:12px;color:var(--text-secondary);">${escapeHtml(auction.description||'')}</p>
+                  </div>
+                  <div>
+                    <div class="card" style="text-align:center;">
+                      <div style="font-size:0.85rem;color:var(--text-muted);">CURRENT BID</div>
+                      <div style="font-size:2.5rem;font-weight:900;color:var(--accent-gold);font-family:'JetBrains Mono',monospace;">KES ${currentBid.toLocaleString()}</div>
+                      <div>${isLive?'<span class="badge badge-live">🔴 LIVE</span>':'<span class="badge badge-sold">Ended</span>'}</div>
+                      ${isLive?`
+                      <div class="countdown-timer" style="font-size:1.5rem;margin:12px 0;" id="detail-countdown">⏱ Calculating...</div>
+                      <p style="font-size:0.85rem;color:var(--text-muted);">Min next bid: <strong>KES ${minNext.toLocaleString()}</strong></p>
+                      <input type="number" class="form-input" id="bid-amount" placeholder="Enter bid amount" min="${minNext}" style="text-align:center;font-size:1.1rem;margin-top:8px;">
+                      <button class="btn btn-primary btn-block btn-lg mt-2" onclick="window._placeBid('${id}',${minNext})"><i class="fas fa-gavel"></i> PLACE BID</button>
+                      `:''}
+                      ${auction.winningBidderId===AppState.currentUser?.uid&&auction.status==='ended'?'<div class="badge badge-sold" style="margin-top:8px;">🏆 YOU WON!</div>':''}
+                    </div>
+                    <div class="card mt-2"><div class="card-title mb-2">📋 Bid History</div><div id="bid-history-list"><p style="color:var(--text-muted);">Loading bids...</p></div></div>
+                  </div>
+                </div>`;
+                if (isLive) startDetailCountdown(endTime);
+            } catch (e) { container.innerHTML = '<p style="color:var(--accent-red);">Error loading auction.</p>'; }
+        }
+
+        function startDetailCountdown(endTime) {
+            const el = document.getElementById('detail-countdown');
+            if (!el) return;
+            function update() {
+                const diff = endTime - new Date();
+                if (diff <= 0) { el.textContent = '⏱ AUCTION ENDED'; el.classList.add('urgent'); return; }
+                const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+                el.textContent = `⏱ ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                if (diff<3600000) el.classList.add('urgent');
+            }
+            update();
+            const interval = setInterval(update, 1000);
+            AppState.unsubscribers.push(() => clearInterval(interval));
+        }
+
+        async function placeBid(auctionId, minBid) {
+            if (!AppState.currentUser) { showToast('Please sign in to bid.', 'warning'); return; }
+            const bidAmt = parseFloat(document.getElementById('bid-amount')?.value || 0);
+            if (!bidAmt || bidAmt < minBid) { showToast(`Minimum bid: KES ${minBid.toLocaleString()}`, 'warning'); return; }
+            showLoading();
+            try {
+                const aRef = doc(db, 'auctions', auctionId);
+                const aSnap = await getDoc(aRef);
+                if (!aSnap.exists()) throw new Error('Auction not found');
+                const auction = aSnap.data();
+                if (auction.status !== 'live') throw new Error('Auction not live');
+                if (bidAmt <= (auction.currentBid||auction.startingBid||0)) throw new Error('Bid too low');
+                await addDoc(collection(db, 'bids'), {
+                    auctionId, userId: AppState.currentUser.uid,
+                    bidderName: AppState.currentUserData?.displayName || AppState.currentUser.email,
+                    amount: bidAmt, timestamp: serverTimestamp()
+                });
+                await updateDoc(aRef, { currentBid: bidAmt, bidCount: increment(1), lastBidderId: AppState.currentUser.uid, lastBidTime: serverTimestamp() });
+                await updateDoc(doc(db, 'users', AppState.currentUser.uid), { totalBids: increment(1) });
+                showToast('🎉 Bid placed! KES ' + bidAmt.toLocaleString(), 'success');
+                document.getElementById('bid-amount').value = '';
+            } catch (e) { showToast('Bid failed: ' + e.message, 'error'); }
+            finally { hideLoading(); }
+        }
+
+        // ============================================
+        // CREATE LISTING
+        // ============================================
+        document.getElementById('listing-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!AppState.currentUser) { showToast('Please sign in.', 'warning'); return; }
+            showLoading();
+            try {
+                const data = {
+                    category: document.getElementById('listing-category').value,
+                    make: document.getElementById('listing-make').value.trim(),
+                    model: document.getElementById('listing-model').value.trim(),
+                    year: parseInt(document.getElementById('listing-year').value) || null,
+                    vin: document.getElementById('listing-vin').value.trim(),
+                    mileage: parseInt(document.getElementById('listing-mileage').value) || null,
+                    reservePrice: parseFloat(document.getElementById('listing-reserve').value),
+                    startingBid: parseFloat(document.getElementById('listing-start-bid').value),
+                    durationHours: parseInt(document.getElementById('listing-duration').value),
+                    location: document.getElementById('listing-location').value.trim(),
+                    description: document.getElementById('listing-description').value.trim(),
+                    sellerId: AppState.currentUser.uid,
+                    sellerName: AppState.currentUserData?.displayName || AppState.currentUser.email,
+                    status: 'pending_inspection',
+                    currentBid: parseFloat(document.getElementById('listing-start-bid').value),
+                    bidCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+                    exclusivityAgreed: document.getElementById('listing-exclusivity').checked,
+                    sealId: null, inspectionId: null, inspectionCompleted: false, mileageAtInspection: null, endTime: null
+                };
+                await addDoc(collection(db, 'auctions'), data);
+                showToast('✅ Asset listed! Inspector dispatched. Fee: KES 2,500.', 'success');
+                document.getElementById('listing-form').reset();
+                navigateTo('dashboard');
+            } catch (er) { showToast('Error: ' + er.message, 'error'); }
+            finally { hideLoading(); }
+        });
+
+        // ============================================
+        // INSPECTIONS MODULE
+        // ============================================
+        async function loadInspections() {
+            if (!AppState.currentUser) return;
+            const container = document.getElementById('inspections-list');
+            try {
+                const q = AppState.currentUserData?.role === 'inspector' ?
+                    query(collection(db, 'inspections'), where('inspectorId', '==', AppState.currentUser.uid), orderBy('createdAt', 'desc'), limit(30)) :
+                    query(collection(db, 'inspections'), orderBy('createdAt', 'desc'), limit(30));
+                const snap = await getDocs(q);
+                AppState.inspectionAssignments = [];
+                snap.forEach(d => AppState.inspectionAssignments.push({ id: d.id, ...d.data() }));
+                if (AppState.inspectionAssignments.length === 0) {
+                    container.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;">No inspections found.</p>';
+                    return;
+                }
+                container.innerHTML = AppState.inspectionAssignments.map(insp => `
+                <div class="card">
+                  <div class="card-header"><span class="card-title">🔍 #${insp.id.slice(-6)}</span><span class="badge ${insp.status==='completed'?'badge-sold':'badge-pending'}">${insp.status}</span></div>
+                  <p><strong>Asset:</strong> ${escapeHtml(insp.assetMake||'')} ${escapeHtml(insp.assetModel||'')}</p>
+                  <p><strong>Location:</strong> ${escapeHtml(insp.location||'TBA')}</p>
+                  ${insp.mileageReading?`<p><strong>Mileage:</strong> ${insp.mileageReading.toLocaleString()} km</p>`:''}
+                  ${insp.sealId?'<span class="seal-verified">🔒 '+insp.sealId+'</span>':'<span class="seal-broken">⚠️ No Seal</span>'}
+                  ${insp.status==='assigned'&&AppState.currentUserData?.role==='inspector'?`<button class="btn btn-primary btn-sm mt-2" onclick="window._completeInspection('${insp.id}')">✅ Complete</button>`:''}
+                </div>`).join('');
+            } catch (e) { container.innerHTML = '<p style="color:var(--accent-red);">Error loading inspections.</p>'; }
+        }
+
+        async function completeInspection(inspectionId) {
+            showLoading();
+            try {
+                const reading = prompt('Enter current mileage/hours:');
+                if (!reading || isNaN(parseInt(reading))) { showToast('Valid reading required.', 'warning'); hideLoading(); return; }
+                const sealId = 'GCAH-SEAL-' + Date.now().toString(36).toUpperCase();
+                await updateDoc(doc(db, 'inspections', inspectionId), {
+                    status: 'completed', mileageReading: parseInt(reading), sealId,
+                    completedAt: serverTimestamp(), inspectorNotes: 'Inspection completed. Seal applied.'
+                });
+                const inspDoc = await getDoc(doc(db, 'inspections', inspectionId));
+                if (inspDoc.exists() && inspDoc.data().auctionId) {
+                    const endTime = new Date();
+                    endTime.setHours(endTime.getHours() + (inspDoc.data().durationHours || 48));
+                    await updateDoc(doc(db, 'auctions', inspDoc.data().auctionId), {
+                        status: 'live', inspectionCompleted: true, inspectionId,
+                        sealId, mileageAtInspection: parseInt(reading),
+                        endTime: Timestamp.fromDate(endTime), updatedAt: serverTimestamp()
+                    });
+                }
+                showToast('✅ Inspection complete! Seal: ' + sealId, 'success');
+                loadInspections();
+            } catch (e) { showToast('Error: ' + e.message, 'error'); }
+            finally { hideLoading(); }
+        }
+
+        // ============================================
+        // ESCROW MODULE
+        // ============================================
+        async function loadEscrowRecords() {
+            if (!AppState.currentUser) return;
+            const container = document.getElementById('escrow-list');
+            try {
+                const snap = await getDocs(query(collection(db, 'escrow'), where('participants', 'array-contains', AppState.currentUser.uid), orderBy('createdAt', 'desc'), limit(20)));
+                AppState.escrowRecords = [];
+                snap.forEach(d => AppState.escrowRecords.push({ id: d.id, ...d.data() }));
+                if (AppState.escrowRecords.length === 0) {
+                    container.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;">No escrow records.</p>';
+                    return;
+                }
+                const order = ['initiated','funds_held','asset_delivered','buyer_approved','released_to_seller'];
+                container.innerHTML = AppState.escrowRecords.map(esc => {
+                    const idx = order.indexOf(esc.status);
+                    const stepClass = (s) => order.indexOf(s) < idx ? 'completed' : order.indexOf(s) === idx ? 'active' : '';
+                    return `
+                    <div class="card">
+                      <div class="card-header"><span class="card-title">💼 #${esc.id.slice(-6)}</span><span class="badge badge-escrow">${esc.status.replace(/_/g,' ').toUpperCase()}</span></div>
+                      <p><strong>Amount:</strong> <span style="color:var(--accent-gold);font-weight:700;">KES ${(esc.amount||0).toLocaleString()}</span></p>
+                      <p><strong>Auction:</strong> ${escapeHtml(esc.auctionMake||'')} ${escapeHtml(esc.auctionModel||'')}</p>
+                      <div class="escrow-steps" style="position:relative;margin:16px 0;">
+                        <div class="escrow-connector" style="top:16px;left:10%;width:80%;"></div>
+                        ${order.map(s => `<div class="escrow-step ${stepClass(s)}"><div class="escrow-step-dot">${order.indexOf(s)+1}</div><div class="escrow-step-label">${s.replace(/_/g,' ')}</div></div>`).join('')}
+                      </div>
+                      ${esc.ntsaTransferStatus?`<p><strong>NTSA:</strong> ${esc.ntsaTransferStatus}</p>`:''}
+                    </div>`;
+                }).join('');
+            } catch (e) { container.innerHTML = '<p style="color:var(--accent-red);">Error loading escrow.</p>'; }
+        }
+
+        // ============================================
+        // PROFILE MODULE
+        // ============================================
+        async function loadProfile() {
+            if (!AppState.currentUser) return;
+            const container = document.getElementById('profile-content');
+            const u = AppState.currentUserData;
+            if (!u) { container.innerHTML = '<p style="color:var(--accent-red);">Unable to load profile.</p>'; return; }
+            container.innerHTML = `
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="width:80px;height:80px;border-radius:50%;background:var(--gradient-gold);display:inline-flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;color:#1a1a1a;">${(u.displayName||'U').charAt(0).toUpperCase()}</div>
+              <h3 style="margin-top:12px;">${escapeHtml(u.displayName||'User')}</h3>
+              <p style="color:var(--text-muted);">${u.email}</p>
+              <span class="badge ${u.role==='inspector'?'badge-live':u.role==='seller'?'badge-upcoming':'badge-sold'}">${u.role?.toUpperCase()||'BUYER'}</span>
+            </div>
+            <div class="grid-2">
+              <div class="stat-card"><div class="stat-value">${u.totalBids||0}</div><div class="stat-label">Total Bids</div></div>
+              <div class="stat-card"><div class="stat-value">${u.totalWon||0}</div><div class="stat-label">Assets Won</div></div>
+              <div class="stat-card"><div class="stat-value">${u.reputation||100}%</div><div class="stat-label">Reputation</div></div>
+              <div class="stat-card"><div class="stat-value">${u.kycVerified?'✅':'⏳'}</div><div class="stat-label">KYC Status</div></div>
+            </div>
+            <p style="margin-top:16px;font-size:0.8rem;color:var(--text-muted);text-align:center;">Member since: ${u.createdAt?.toDate?.().toLocaleDateString()||'N/A'}</p>`;
+        }
+
+        // ============================================
+        // EXPIRED AUCTION CHECKER
+        // ============================================
+        async function checkExpiredAuctions() {
+            try {
+                const now = new Date();
+                const snap = await getDocs(query(collection(db, 'auctions'), where('status', '==', 'live')));
+                for (const d of snap.docs) {
+                    const a = d.data();
+                    const end = a.endTime?.toDate?.() || new Date(a.endTime);
+                    if (end <= now) {
+                        const bidsSnap = await getDocs(query(collection(db, 'bids'), where('auctionId', '==', d.id), orderBy('amount', 'desc'), limit(1)));
+                        let winnerId = null, winnerName = null, winBid = a.currentBid || a.startingBid || 0;
+                        bidsSnap.forEach(b => { winnerId = b.data().userId; winnerName = b.data().bidderName; winBid = b.data().amount; });
+                        const update = { status: 'ended', winningBid: winBid, endedAt: serverTimestamp(), updatedAt: serverTimestamp() };
+                        if (winnerId && winBid >= (a.reservePrice||0)) {
+                            update.winningBidderId = winnerId;
+                            update.winningBidderName = winnerName;
+                            await updateDoc(d.ref, update);
+                            await addDoc(collection(db, 'escrow'), {
+                                auctionId: d.id, auctionMake: a.make, auctionModel: a.model,
+                                buyerId: winnerId, sellerId: a.sellerId, amount: winBid,
+                                platformFee: Math.round(winBid*0.03), status: 'initiated',
+                                participants: [winnerId, a.sellerId], createdAt: serverTimestamp(),
+                                ntsaTransferStatus: 'pending'
+                            });
+                            if (winnerId) await updateDoc(doc(db, 'users', winnerId), { totalWon: increment(1) });
+                        } else {
+                            update.winningBidderId = null; update.winningBidderName = null;
+                            await updateDoc(d.ref, update);
+                        }
+                    }
+                }
+            } catch (e) { console.error('Expired check error:', e); }
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+        function initApp() {
+            setupAuthListeners();
+            updateAuthForm();
+            if (AppState.currentUser) navigateTo('dashboard'); else navigateTo('auth');
+            setInterval(checkExpiredAuctions, 30000);
+            console.log('🌌 Galaxy CAH Initialized');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => { showLoading(); initApp(); setTimeout(() => { if (!AppState.currentUser && AppState.currentScreen==='auth') hideLoading(); }, 2000); });
+    </script>
+</body>
+</html>
