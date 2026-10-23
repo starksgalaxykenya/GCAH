@@ -4,7 +4,7 @@
 import { db } from './firebase-config.js';
 import { renderSheet, readSheet } from './condition-sheet.js';
 import {
-    collection, doc, getDoc, getDocs, addDoc, updateDoc, query,
+    collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, query,
     where, orderBy, limit, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
@@ -221,7 +221,7 @@ async function requestPayout() {
     showLoading();
     try {
         for (const r of records) {
-            await addDoc(collection(db, 'payouts'), {
+            await setDoc(doc(db, 'payouts', r.id), {
                 sellerId: State.user.uid, sellerName: State.userData?.displayName, escrowId: r.id,
                 assetLabel: `${r.auctionMake || ''} ${r.auctionModel || ''}`.trim(),
                 amount: (r.amount || 0) - (r.platformFee || 0), status: 'requested', createdAt: serverTimestamp()

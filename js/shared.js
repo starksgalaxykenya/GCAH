@@ -194,7 +194,7 @@ export async function runExpiryWatchdog() {
                 update.winningBidderId = winnerId;
                 update.winningBidderName = winnerName;
                 await updateDoc(d.ref, update);
-                await addDoc(collection(db, 'escrow'), {
+                await setDoc(doc(db, 'escrow', d.id), {
                     auctionId: d.id, auctionMake: a.make, auctionModel: a.model,
                     buyerId: winnerId, sellerId: a.sellerId, amount: winBid,
                     platformFee: Math.round(winBid * CONFIG.platformFeePercent), status: 'initiated',

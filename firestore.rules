@@ -1,109 +1,266 @@
 rules_version = '2';
 
 // ============================================================
-// FIRESTORE SECURITY RULES — Galaxy Consolidated Auction House
-// Deploy with: firebase deploy --only firestore:rules
+// FIRESTORE RULES — Galaxy CAH (client-side MVP)
+// Deploy: firebase deploy --only firestore:rules
+// FIRST ADMIN: roles can no longer be self-assigned. In Firebase Console ->
+// Firestore -> users/{your uid}, set role = "admin" by hand (one time).
+// Inspectors register freely but act only after an admin sets kycVerified = true
+// (Admin portal -> Users -> Verify).
 // ============================================================
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() { return request.auth != null; }
-    function myUid() { return request.auth.uid; }
-    function myRole() { return get(/databases/$(database)/documents/users/$(myUid())).data.role; }
-    function isAdmin() { return isSignedIn() && myRole() == 'admin'; }
-    function isOwner(uid) { return isSignedIn() && myUid() == uid; }
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function role() { return profile().role; }
+    function isAdmin() { return signedIn() && role() == 'admin'; }
+    function active() { return signedIn() && profile().get('suspended', false) != true; }
+    function isSeller() { return active() && role() == 'seller'; }
+    function isInspector() { return active() && role() == 'inspector' && profile().get('kycVerified', false) == true; }
+    // Set to profile().get('kycVerified', false) == true to require KYC before bidding / buying.
+    function kycOkToBid() { return true; }
+    function changed(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+    function auctionOf(id) { return get(/databases/$(database)/documents/auctions/$(id)).data; }
+    function escrowOf(id) { return get(/databases/$(database)/documents/escrow/$(id)).data; }
 
-    // ---------------- USERS ----------------
+    // ---------- USERS ----------
     match /users/{uid} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(uid);
-      // Users may edit their own profile but never their own role/kyc/suspended flags.
-      allow update: if isOwner(uid) &&
-        request.resource.data.role == resource.data.role &&
-        request.resource.data.kycVerified == resource.data.kycVerified &&
-        request.resource.data.suspended == resource.data.suspended
-        || isAdmin();
+      // Private data (payout details, phone): owner and admin only.
+      allow read: if signedIn() && (me() == uid || isAdmin());
+
+      // Self-registration: buyer / seller / inspector only, with neutral starting values.
+      allow create: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['uid','email','displayName','role','phone','createdAt','updatedAt','kycVerified','totalBids','totalWon','escrowBalance','reputation','suspended'])
+        && request.resource.data.uid == uid
+        && request.resource.data.role in ['buyer','seller','inspector']
+        && request.resource.data.kycVerified == false
+        && request.resource.data.suspended == false
+        && request.resource.data.totalBids == 0
+        && request.resource.data.totalWon == 0
+        && request.resource.data.escrowBalance == 0
+        && request.resource.data.reputation == 100;
+
+      allow update: if isAdmin()
+        // owner edits profile fields only; totalBids may stay or rise by exactly 1
+        || (me() == uid
+            && changed(['displayName','phone','coverageArea','payoutDetails','totalBids','updatedAt'])
+            && request.resource.data.get('totalBids', 0) in [resource.data.get('totalBids', 0), resource.data.get('totalBids', 0) + 1])
+        // settlement (run by any client) bumps the winner's win counter by exactly 1
+        || (signedIn() && changed(['totalWon','updatedAt'])
+            && request.resource.data.totalWon == resource.data.get('totalWon', 0) + 1);
+
       allow delete: if isAdmin();
     }
 
-    // ---------------- AUCTIONS (consignment listings) ----------------
+    // ---------- AUCTIONS ----------
     match /auctions/{id} {
-      allow read: if true; // public auction floor
-      allow create: if isSignedIn() && myRole() == 'seller' && request.resource.data.sellerId == myUid();
-      allow update: if isAdmin() ||
-        (isSignedIn() && myRole() == 'inspector') || // inspectors flip status to live
-        (isSignedIn()); // bidding updates currentBid/bidCount — refine further with Cloud Functions in production
+      allow read: if true;
+
+      allow create: if isAdmin() || (
+        isSeller()
+        && request.resource.data.sellerId == me()
+        && request.resource.data.bidCount == 0
+        && request.resource.data.currentBid == request.resource.data.startingBid
+        && request.resource.data.get('listingMode', 'auction') in ['auction','one_price']
+        && request.resource.data.get('winningBidderId', null) == null
+        && request.resource.data.get('featured', false) == false
+        && request.resource.data.get('sealId', null) == null
+        && (
+          request.resource.data.status == 'pending_inspection'                       // agent path
+          || (request.resource.data.status == 'live'                                  // self-inspection path
+              && request.resource.data.get('inspectionType', '') == 'self'
+              && request.resource.data.get('verification', '') == 'seller_declared')
+        )
+      );
+
+      allow update: if isAdmin()
+
+        // (1) Bid: raise the price on a live auction before it closes
+        || (active() && kycOkToBid()
+            && resource.data.status == 'live'
+            && resource.data.get('listingMode', 'auction') == 'auction'
+            && resource.data.sellerId != me()
+            && resource.data.endTime > request.time
+            && changed(['currentBid','bidCount','lastBidderId','lastBidTime','updatedAt'])
+            && request.resource.data.currentBid > resource.data.currentBid
+            && request.resource.data.bidCount == resource.data.bidCount + 1
+            && request.resource.data.lastBidderId == me())
+
+        // (2) One-price purchase: first buyer wins (client uses a transaction)
+        || (active() && kycOkToBid()
+            && resource.data.status == 'live'
+            && resource.data.get('listingMode', 'auction') == 'one_price'
+            && resource.data.sellerId != me()
+            && changed(['status','winningBidderId','winningBidderName','winningBid','endedAt','updatedAt'])
+            && request.resource.data.status == 'ended'
+            && request.resource.data.winningBidderId == me()
+            && request.resource.data.winningBid == resource.data.fixedPrice)
+
+        // (3) Settlement of an expired auction: any client may run it, but only to the true result
+        || (signedIn()
+            && resource.data.status == 'live'
+            && resource.data.get('listingMode', 'auction') == 'auction'
+            && resource.data.endTime <= request.time
+            && changed(['status','winningBid','winningBidderId','winningBidderName','endedAt','updatedAt'])
+            && request.resource.data.status == 'ended'
+            && request.resource.data.winningBid == resource.data.currentBid
+            && (
+              (request.resource.data.winningBidderId == resource.data.get('lastBidderId', '#none')
+                 && resource.data.currentBid >= resource.data.get('reservePrice', 0))
+              || (request.resource.data.winningBidderId == null
+                 && (resource.data.bidCount == 0 || resource.data.currentBid < resource.data.get('reservePrice', 0)))
+            ))
+
+        // (4) Assigned, approved inspector takes a listing live after sealing it
+        || (isInspector()
+            && resource.data.status == 'pending_inspection'
+            && changed(['status','inspectionCompleted','inspectionId','sealId','mileageAtInspection','endTime','conditionReport','grade','verification','updatedAt'])
+            && request.resource.data.status == 'live'
+            && request.resource.data.verification == 'agent_verified'
+            && get(/databases/$(database)/documents/inspections/$(request.resource.data.inspectionId)).data.inspectorId == me()
+            && get(/databases/$(database)/documents/inspections/$(request.resource.data.inspectionId)).data.auctionId == id);
+
       allow delete: if isAdmin();
     }
 
-    // ---------------- BIDS ----------------
+    // ---------- BIDS ----------
     match /bids/{id} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == myUid();
+      allow create: if active() && kycOkToBid()
+        && request.resource.data.keys().hasOnly(['auctionId','userId','bidderName','amount','timestamp'])
+        && request.resource.data.userId == me()
+        && request.resource.data.timestamp == request.time
+        && auctionOf(request.resource.data.auctionId).status == 'live'
+        && auctionOf(request.resource.data.auctionId).get('listingMode', 'auction') == 'auction'
+        && auctionOf(request.resource.data.auctionId).sellerId != me()
+        && request.resource.data.amount > auctionOf(request.resource.data.auctionId).currentBid;
       allow update, delete: if isAdmin();
     }
 
-    // ---------------- INSPECTIONS ----------------
+    // ---------- INSPECTIONS ----------
     match /inspections/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn(); // created automatically on listing submission
-      allow update: if isAdmin() || (isSignedIn() && myRole() == 'inspector');
+      allow read: if isAdmin() || isInspector();
+
+      // Created by the seller right after listing (agent path)
+      allow create: if isSeller()
+        && request.resource.data.status == 'unassigned'
+        && request.resource.data.get('inspectorId', null) == null
+        && auctionOf(request.resource.data.auctionId).sellerId == me();
+
+      allow update: if isAdmin()
+        // claim a job from the queue
+        || (isInspector() && resource.data.status == 'unassigned'
+            && changed(['status','inspectorId','inspectorName','assignedAt'])
+            && request.resource.data.status == 'assigned'
+            && request.resource.data.inspectorId == me())
+        // complete your own job
+        || (isInspector() && resource.data.inspectorId == me() && resource.data.status == 'assigned'
+            && changed(['status','mileageReading','sealId','completedAt','inspectorNotes','conditionReport','grade'])
+            && request.resource.data.status == 'completed');
+
       allow delete: if isAdmin();
     }
 
-    // ---------------- ESCROW ----------------
+    // ---------- ESCROW ----------
+    // One escrow per auction: the document id IS the auction id, so duplicates are impossible.
     match /escrow/{id} {
-      allow read: if isSignedIn() && (isAdmin() || myUid() in resource.data.participants);
-      allow create: if isAdmin() || isSignedIn(); // created by the settlement routine
-      allow update: if isAdmin() ||
-        (isSignedIn() && myUid() in resource.data.participants && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['disputeRaised','disputeReason','disputeStatus','disputeRaisedBy','updatedAt']));
+      allow read: if isAdmin()
+        || resource.data.buyerId == me() || resource.data.sellerId == me()
+        || me() in resource.data.participants;
+
+      allow create: if isAdmin() || (
+        signedIn()
+        && id == request.resource.data.auctionId
+        && auctionOf(id).status == 'ended'
+        && request.resource.data.buyerId == auctionOf(id).winningBidderId
+        && request.resource.data.sellerId == auctionOf(id).sellerId
+        && request.resource.data.amount == auctionOf(id).winningBid
+        && request.resource.data.status == 'initiated'
+        && request.resource.data.disputeRaised == false
+        && request.resource.data.platformFee >= 0
+        && request.resource.data.platformFee <= request.resource.data.amount * 0.2
+        && request.resource.data.participants.hasOnly([request.resource.data.buyerId, request.resource.data.sellerId])
+      );
+
+      // Participants may only raise a dispute; money state is admin-only.
+      allow update: if isAdmin()
+        || (signedIn() && me() in resource.data.participants
+            && changed(['disputeRaised','disputeReason','disputeStatus','disputeRaisedBy','updatedAt']));
       allow delete: if isAdmin();
     }
 
-    // ---------------- DISPUTES ----------------
+    // ---------- DISPUTES ----------
     match /disputes/{id} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.raisedBy == myUid();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow read: if isAdmin() || resource.data.raisedBy == me();
+      allow create: if active() && request.resource.data.raisedBy == me()
+        && me() in escrowOf(request.resource.data.escrowId).participants;
+      allow update, delete: if isAdmin();
     }
 
-    // ---------------- STOCK (own inventory / buy-now store) ----------------
+    // ---------- STOCK (company inventory, public storefront) ----------
     match /stock/{id} {
-      allow read: if true; // public storefront
-      allow write: if isAdmin();
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      // Admin edits anything. A buyer may only reduce quantity (never change price or details).
+      allow update: if isAdmin()
+        || (active() && kycOkToBid()
+            && resource.data.status == 'available'
+            && changed(['quantity','status'])
+            && request.resource.data.quantity >= 0
+            && request.resource.data.quantity < resource.data.quantity
+            && request.resource.data.status in ['available','sold_out']);
     }
 
-    // ---------------- ORDERS (buy-now purchases) ----------------
+    // ---------- ORDERS ----------
     match /orders/{id} {
-      allow read: if isSignedIn() && (isAdmin() || resource.data.buyerId == myUid());
-      allow create: if isSignedIn() && request.resource.data.buyerId == myUid();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow read: if isAdmin() || resource.data.buyerId == me();
+      allow create: if active() && kycOkToBid()
+        && request.resource.data.buyerId == me()
+        && request.resource.data.status == 'pending_payment'
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity > 0
+        && request.resource.data.unitPrice == get(/databases/$(database)/documents/stock/$(request.resource.data.stockId)).data.price
+        && request.resource.data.quantity <= get(/databases/$(database)/documents/stock/$(request.resource.data.stockId)).data.quantity
+        && request.resource.data.total == request.resource.data.unitPrice * request.resource.data.quantity;
+      allow update, delete: if isAdmin();
     }
 
-    // ---------------- PAYOUTS ----------------
+    // ---------- PAYOUTS ----------
+    // Document id = escrow id, so a seller cannot request the same payout twice.
     match /payouts/{id} {
-      allow read: if isSignedIn() && (isAdmin() || resource.data.sellerId == myUid());
-      allow create: if isSignedIn() && request.resource.data.sellerId == myUid();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow read: if isAdmin() || resource.data.sellerId == me();
+      allow create: if isSeller()
+        && request.resource.data.sellerId == me()
+        && id == request.resource.data.escrowId
+        && request.resource.data.status == 'requested'
+        && escrowOf(id).sellerId == me()
+        && escrowOf(id).status == 'released_to_seller'
+        && request.resource.data.amount == escrowOf(id).amount - escrowOf(id).platformFee;
+      allow update, delete: if isAdmin();
     }
 
-    // ---------------- WATCHLIST ----------------
+    // ---------- WATCHLIST ----------
     match /watchlist/{id} {
-      allow read, delete: if isSignedIn() && resource.data.userId == myUid();
-      allow create: if isSignedIn() && request.resource.data.userId == myUid();
+      allow read, delete: if signedIn() && resource.data.userId == me();
+      allow create: if signedIn() && request.resource.data.userId == me();
     }
 
-    // ---------------- NOTIFICATIONS ----------------
+    // ---------- NOTIFICATIONS ----------
     match /notifications/{id} {
-      allow read, update: if isSignedIn() && resource.data.userId == myUid();
-      allow create: if isSignedIn(); // any portal can push a notification to another user
-      allow delete: if isAdmin();
+      allow read: if signedIn() && resource.data.userId == me();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['userId','title','message','type','link','read','createdAt'])
+        && request.resource.data.read == false
+        && request.resource.data.title.size() < 200
+        && request.resource.data.message.size() < 1000;
+      allow update: if signedIn() && resource.data.userId == me() && changed(['read']);
+      allow delete: if isAdmin() || (signedIn() && resource.data.userId == me());
     }
 
-    // ---------------- SETTINGS ----------------
+    // ---------- SETTINGS ----------
     match /settings/{id} {
       allow read: if true;
       allow write: if isAdmin();

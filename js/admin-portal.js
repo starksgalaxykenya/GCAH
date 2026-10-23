@@ -250,7 +250,7 @@ async function settleAuction(auctionId) {
         update.winningBidderId = winnerId;
         update.winningBidderName = winnerName;
         await updateDoc(aRef, update);
-        await addDoc(collection(db, 'escrow'), {
+        await setDoc(doc(db, 'escrow', auctionId), {
             auctionId, auctionMake: a.make, auctionModel: a.model,
             buyerId: winnerId, sellerId: a.sellerId, amount: winBid,
             platformFee: Math.round(winBid * CONFIG.platformFeePercent), status: 'initiated',

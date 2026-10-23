@@ -4,7 +4,7 @@
 import { db } from './firebase-config.js';
 import { gradeBadge } from './condition-sheet.js';
 import {
-    collection, doc, getDoc, getDocs, addDoc, runTransaction, updateDoc, deleteDoc, query,
+    collection, doc, getDoc, getDocs, addDoc, setDoc, runTransaction, updateDoc, deleteDoc, query,
     where, orderBy, limit, onSnapshot, serverTimestamp, increment, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
@@ -247,7 +247,7 @@ async function buyNow(auctionId) {
             if (sold.sellerId === State.user.uid) throw new Error('You cannot buy your own listing');
             tx.update(aRef, { status: 'ended', winningBidderId: State.user.uid, winningBidderName: State.userData?.displayName || State.user.email, winningBid: sold.fixedPrice, endedAt: serverTimestamp(), updatedAt: serverTimestamp() });
         });
-        await addDoc(collection(db, 'escrow'), {
+        await setDoc(doc(db, 'escrow', auctionId), {
             auctionId, auctionMake: sold.make, auctionModel: sold.model, saleType: 'one_price',
             buyerId: State.user.uid, sellerId: sold.sellerId, amount: sold.fixedPrice,
             platformFee: Math.round(sold.fixedPrice * CONFIG.platformFeePercent), status: 'initiated',
