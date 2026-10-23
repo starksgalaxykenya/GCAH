@@ -183,6 +183,7 @@ export async function runExpiryWatchdog() {
         const snap = await getDocs(query(collection(db, 'auctions'), where('status', '==', 'live')));
         for (const d of snap.docs) {
             const a = d.data();
+            if (a.listingMode === 'one_price' || !a.endTime) continue; // one-price listings never expire by timer
             const end = a.endTime?.toDate ? a.endTime.toDate() : new Date(a.endTime);
             if (end > now) continue;
             const bidsSnap = await getDocs(query(collection(db, 'bids'), where('auctionId', '==', d.id), orderBy('amount', 'desc'), limit(1)));

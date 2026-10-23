@@ -2,8 +2,9 @@
 // BUYER PORTAL LOGIC
 // ============================================================
 import { db } from './firebase-config.js';
+import { gradeBadge } from './condition-sheet.js';
 import {
-    collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query,
+    collection, doc, getDoc, getDocs, addDoc, runTransaction, updateDoc, deleteDoc, query,
     where, orderBy, limit, onSnapshot, serverTimestamp, increment, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
@@ -202,6 +203,8 @@ function renderAuctionDetail(auction) {
         <p class="text-muted">${auction.year || 'N/A'} · ${escapeHtml(auction.location || 'TBA')}</p>
         ${auction.mileage ? `<p>🛣 Mileage: <strong>${auction.mileage.toLocaleString()} km</strong></p>` : ''}
         ${auction.vin ? `<p style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;">🔢 VIN: ${escapeHtml(auction.vin)}</p>` : ''}
+        ${gradeBadge(auction.grade, auction.verification)}
+        ${auction.conditionReport?.defects?.length ? `<details style="text-align:left;margin-top:8px;"><summary>Declared defects (${auction.conditionReport.defects.length})</summary><ul style="font-size:0.8rem;">${auction.conditionReport.defects.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>${auction.conditionReport.accident !== 'none' ? `<p style="font-size:0.8rem;">Accident history: ${escapeHtml(auction.conditionReport.accident)}</p>` : ''}</details>` : ''}
         ${auction.sealId ? '<span class="seal-verified">🔒 Seal Verified</span>' : '<span class="seal-broken">⚠️ Seal Pending</span>'}
         <p style="margin-top:12px;color:var(--text-secondary);">${escapeHtml(auction.description || '')}</p>
         <p class="text-muted mt-2" style="font-size:0.8rem;">Seller: ${escapeHtml(auction.sellerName || 'Galaxy CAH')}</p>
@@ -211,7 +214,11 @@ function renderAuctionDetail(auction) {
           <div style="font-size:0.85rem;color:var(--text-muted);">CURRENT BID</div>
           <div style="font-size:2.5rem;font-weight:900;color:var(--accent-gold);font-family:'JetBrains Mono',monospace;">${money(currentBid)}</div>
           <div>${isLive ? '<span class="badge badge-live">🔴 LIVE</span>' : auction.status === 'ended' ? '<span class="badge badge-sold">Ended</span>' : '<span class="badge badge-upcoming">Upcoming</span>'}</div>
-          ${isLive ? `
+          ${isLive && auction.listingMode === 'one_price' ? `
+          <p style="margin:12px 0;">Fixed price · first come, first served</p>
+          <button class="btn btn-primary btn-block btn-lg" onclick="window._buyNow('${auction.id}')"><i class="fas fa-bolt"></i> BUY NOW</button>
+          ` : ''}
+          ${isLive && auction.listingMode !== 'one_price' ? `
           <div class="countdown-timer" style="font-size:1.5rem;margin:12px 0;" id="detail-countdown">⏱ Calculating...</div>
           <p style="font-size:0.85rem;color:var(--text-muted);">Min next bid: <strong>${money(minNext)}</strong></p>
           <input type="number" class="form-input" id="bid-amount" placeholder="Enter bid amount" min="${minNext}" style="text-align:center;font-size:1.1rem;margin-top:8px;">
@@ -225,6 +232,34 @@ function renderAuctionDetail(auction) {
     </div>`;
     if (isLive) attachCountdown(document.getElementById('detail-countdown'), endTime);
 }
+
+async function buyNow(auctionId) {
+    if (!confirm('Buy at the fixed price? You will then pay into Galaxy CAH escrow.')) return;
+    showLoading();
+    try {
+        const aRef = doc(db, 'auctions', auctionId);
+        let sold;
+        await runTransaction(db, async (tx) => {          // first come, first served
+            const snap = await tx.get(aRef);
+            if (!snap.exists()) throw new Error('Listing not found');
+            sold = snap.data();
+            if (sold.status !== 'live' || sold.listingMode !== 'one_price') throw new Error('Already sold or unavailable');
+            if (sold.sellerId === State.user.uid) throw new Error('You cannot buy your own listing');
+            tx.update(aRef, { status: 'ended', winningBidderId: State.user.uid, winningBidderName: State.userData?.displayName || State.user.email, winningBid: sold.fixedPrice, endedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        });
+        await addDoc(collection(db, 'escrow'), {
+            auctionId, auctionMake: sold.make, auctionModel: sold.model, saleType: 'one_price',
+            buyerId: State.user.uid, sellerId: sold.sellerId, amount: sold.fixedPrice,
+            platformFee: Math.round(sold.fixedPrice * CONFIG.platformFeePercent), status: 'initiated',
+            participants: [State.user.uid, sold.sellerId], createdAt: serverTimestamp(),
+            ntsaTransferStatus: 'pending', disputeRaised: false
+        });
+        pushNotification(sold.sellerId, { title: 'Sold at fixed price!', type: 'success', message: `${sold.make} ${sold.model} was bought for ${money(sold.fixedPrice)}.`, link: 'seller-portal.html' });
+        showToast('✅ Reserved! Pay into escrow from the Escrow tab.', 'success');
+    } catch (e) { showToast('Could not buy: ' + e.message, 'error'); }
+    finally { hideLoading(); }
+}
+window._buyNow = buyNow;
 
 async function placeBid(auctionId, minBid) {
     const bidAmt = parseFloat(document.getElementById('bid-amount')?.value || 0);

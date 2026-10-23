@@ -2,6 +2,7 @@
 // SELLER PORTAL LOGIC
 // ============================================================
 import { db } from './firebase-config.js';
+import { renderSheet, readSheet } from './condition-sheet.js';
 import {
     collection, doc, getDoc, getDocs, addDoc, updateDoc, query,
     where, orderBy, limit, serverTimestamp
@@ -109,10 +110,35 @@ function renderListingCard(a) {
 // ---------------------------------------------------------
 // CREATE LISTING
 // ---------------------------------------------------------
+renderSheet(document.getElementById('self-sheet'), 'self');
+function syncListingForm() {
+    const self = document.getElementById('listing-insp-type').value === 'self';
+    const one = document.getElementById('listing-mode').value === 'one_price';
+    document.getElementById('self-sheet-wrap').style.display = self ? 'block' : 'none';
+    document.getElementById('fixed-price-group').style.display = one ? 'block' : 'none';
+    document.getElementById('listing-fixed').required = one;
+    ['listing-reserve', 'listing-start-bid', 'listing-duration'].forEach(id => {
+        document.getElementById(id).required = !one;
+        document.getElementById(id).closest('.form-group').style.display = one ? 'none' : 'block';
+    });
+}
+document.getElementById('listing-insp-type').addEventListener('change', syncListingForm);
+document.getElementById('listing-mode').addEventListener('change', syncListingForm);
+
 document.getElementById('listing-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     showLoading();
     try {
+        const self = document.getElementById('listing-insp-type').value === 'self';
+        const mode = document.getElementById('listing-mode').value;
+        const fixed = parseFloat(document.getElementById('listing-fixed').value);
+        let sheet = null;
+        if (self) {
+            const r = readSheet(document.getElementById('self-sheet'), 'self');
+            if (r.error) throw new Error(r.error);
+            sheet = r.report;
+        }
+        const duration = mode === 'one_price' ? 0 : parseInt(document.getElementById('listing-duration').value);
         const data = {
             category: document.getElementById('listing-category').value,
             make: document.getElementById('listing-make').value.trim(),
@@ -120,25 +146,29 @@ document.getElementById('listing-form').addEventListener('submit', async (e) => 
             year: parseInt(document.getElementById('listing-year').value) || null,
             vin: document.getElementById('listing-vin').value.trim(),
             mileage: parseInt(document.getElementById('listing-mileage').value) || null,
-            reservePrice: parseFloat(document.getElementById('listing-reserve').value),
-            startingBid: parseFloat(document.getElementById('listing-start-bid').value),
-            durationHours: parseInt(document.getElementById('listing-duration').value),
+            reservePrice: mode === 'one_price' ? fixed : parseFloat(document.getElementById('listing-reserve').value),
+            startingBid: mode === 'one_price' ? fixed : parseFloat(document.getElementById('listing-start-bid').value),
+            durationHours: duration,
+            listingMode: mode, fixedPrice: mode === 'one_price' ? fixed : null,
+            inspectionType: self ? 'self' : 'agent', verification: self ? 'seller_declared' : 'pending',
+            conditionReport: sheet, grade: sheet ? sheet.grade : null,
             location: document.getElementById('listing-location').value.trim(),
             description: document.getElementById('listing-description').value.trim(),
             sellerId: State.user.uid,
             sellerName: State.userData?.displayName || State.user.email,
-            status: 'pending_inspection',
-            currentBid: parseFloat(document.getElementById('listing-start-bid').value),
+            status: self ? 'live' : 'pending_inspection',
+            currentBid: mode === 'one_price' ? fixed : parseFloat(document.getElementById('listing-start-bid').value),
             bidCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
             exclusivityAgreed: document.getElementById('listing-exclusivity').checked,
             listingFee: CONFIG.listingFeeKES,
-            sealId: null, inspectionId: null, inspectionCompleted: false, mileageAtInspection: null, endTime: null
+            sealId: null, inspectionId: null, inspectionCompleted: false, mileageAtInspection: null,
+            endTime: self && mode === 'auction' ? new Date(Date.now() + duration * 3600000) : null
         };
         const ref = await addDoc(collection(db, 'auctions'), data);
-        // Auto-create an inspection assignment queued for an inspector to pick up.
-        await addDoc(collection(db, 'inspections'), {
+        // Agent path only: queue an inspection job. Self-inspected listings go straight live.
+        if (!self) await addDoc(collection(db, 'inspections'), {
             auctionId: ref.id, assetMake: data.make, assetModel: data.model, location: data.location,
-            durationHours: data.durationHours, status: 'unassigned', inspectorId: null, inspectorName: null,
+            durationHours: data.durationHours, listingMode: mode, status: 'unassigned', inspectorId: null, inspectorName: null,
             createdAt: serverTimestamp()
         });
         showToast(`✅ Asset listed! Inspector will be dispatched. Fee: ${money(CONFIG.listingFeeKES)}.`, 'success');

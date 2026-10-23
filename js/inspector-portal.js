@@ -2,6 +2,7 @@
 // INSPECTOR PORTAL LOGIC
 // ============================================================
 import { db } from './firebase-config.js';
+import { renderSheet, readSheet } from './condition-sheet.js';
 import {
     collection, doc, getDoc, getDocs, updateDoc, query,
     where, orderBy, limit, serverTimestamp, Timestamp
@@ -119,21 +120,36 @@ function renderAssignmentCard(j) {
     </div>`;
 }
 
-async function completeInspection(inspectionId) {
-    const reading = prompt('Enter current mileage/hours reading:');
+function completeInspection(inspectionId) {
+    document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay"><div class="modal" style="max-width:720px;">
+      <div class="modal-header"><span class="card-title">Condition Report</span><button class="modal-close" onclick="document.getElementById('modal-container').innerHTML=''">&times;</button></div>
+      <div class="form-group"><label class="form-label">Mileage / Hours reading *</label><input type="number" class="form-input" id="insp-mileage" min="0"></div>
+      <div id="insp-sheet"></div>
+      <button class="btn btn-success btn-block mt-2" onclick="window._submitInspection('${inspectionId}')"><i class="fas fa-lock"></i> Submit & Seal</button>
+    </div></div>`;
+    renderSheet(document.getElementById('insp-sheet'), 'insp');
+}
+window._submitInspection = submitInspection;
+
+async function submitInspection(inspectionId) {
+    const reading = document.getElementById('insp-mileage').value;
     if (!reading || isNaN(parseInt(reading))) { showToast('A valid mileage/hours reading is required.', 'warning'); return; }
-    const notes = prompt('Inspector notes (condition summary):') || 'Inspection completed. Seal applied.';
+    const r = readSheet(document.getElementById('insp-sheet'), 'insp');
+    if (r.error) { showToast(r.error, 'warning'); return; }
+    const report = r.report, notes = report.notes || 'Inspection completed. Seal applied.';
     showLoading();
     try {
         const sealId = 'GCAH-SEAL-' + Date.now().toString(36).toUpperCase();
         const inspRef = doc(db, 'inspections', inspectionId);
         await updateDoc(inspRef, {
             status: 'completed', mileageReading: parseInt(reading), sealId,
-            completedAt: serverTimestamp(), inspectorNotes: notes
+            completedAt: serverTimestamp(), inspectorNotes: notes, conditionReport: report, grade: report.grade
         });
         const inspDoc = await getDoc(inspRef);
         const auctionId = inspDoc.data().auctionId;
         if (auctionId) {
+            const onePrice = inspDoc.data().listingMode === 'one_price';
             const endTime = new Date();
             endTime.setHours(endTime.getHours() + (inspDoc.data().durationHours || 48));
             const auctionRef = doc(db, 'auctions', auctionId);
@@ -141,7 +157,8 @@ async function completeInspection(inspectionId) {
             await updateDoc(auctionRef, {
                 status: 'live', inspectionCompleted: true, inspectionId,
                 sealId, mileageAtInspection: parseInt(reading),
-                endTime: Timestamp.fromDate(endTime), updatedAt: serverTimestamp()
+                endTime: onePrice ? null : Timestamp.fromDate(endTime),
+                conditionReport: report, grade: report.grade, verification: 'agent_verified', updatedAt: serverTimestamp()
             });
             if (auctionSnap.exists()) {
                 pushNotification(auctionSnap.data().sellerId, {
@@ -151,6 +168,7 @@ async function completeInspection(inspectionId) {
                 });
             }
         }
+        document.getElementById('modal-container').innerHTML = '';
         showToast('✅ Inspection complete! Seal: ' + sealId, 'success');
         loadAssignments();
         loadDashboard();
